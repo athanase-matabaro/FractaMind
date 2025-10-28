@@ -221,7 +221,7 @@ export async function attachEmbeddingsAndKeys(nodes) {
  * @returns {Promise<void>}
  */
 export async function persistProject(data) {
-  const { project, nodes } = data;
+  const { nodes, rootNode, ...project } = data;
 
   // Save project metadata as a special node
   const projectNode = {
@@ -241,12 +241,13 @@ export async function persistProject(data) {
 
   await saveNode(projectNode);
 
-  // Save all nodes
-  for (const node of nodes) {
+  // Save all nodes (including rootNode if provided)
+  const allNodes = rootNode ? [rootNode, ...nodes] : nodes;
+  for (const node of allNodes) {
     await saveNode(node);
   }
 
-  console.log(`Persisted project ${project.id} with ${nodes.length} nodes`);
+  console.log(`Persisted project ${project.id} with ${allNodes.length} nodes`);
 }
 
 /**

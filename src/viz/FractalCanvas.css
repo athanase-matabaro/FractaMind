@@ -1,0 +1,404 @@
+/* Fractal Canvas Styles */
+
+.fractal-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  outline: none;
+}
+
+/* HUD Controls */
+.fractal-hud {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.hud-button {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.hud-button:hover {
+  background: white;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.hud-button:active {
+  transform: translateY(0);
+}
+
+.hud-info {
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: monospace;
+}
+
+/* Alert Messages */
+.fractal-alert {
+  position: absolute;
+  top: 4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 110;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  max-width: 500px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.fractal-alert-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.alert-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 1rem;
+  opacity: 0.7;
+}
+
+.alert-close:hover {
+  opacity: 1;
+}
+
+/* Progress Indicator */
+.fractal-progress {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 120;
+  background: white;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  min-width: 300px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+}
+
+.progress-message {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.875rem;
+  color: #667eea;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Canvas */
+.fractal-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  transition: transform 0.1s ease-out;
+  cursor: grab;
+}
+
+.fractal-canvas.dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+/* SVG Edges */
+.fractal-edges {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.edge-line {
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-linecap: round;
+}
+
+/* Fractal Nodes */
+.fractal-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.fractal-node:hover {
+  z-index: 10;
+  filter: brightness(1.2);
+}
+
+.fractal-node:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 4px;
+}
+
+.fractal-node.selected {
+  z-index: 20;
+}
+
+.fractal-node.selected .node-circle {
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+.fractal-node.expanding .node-circle {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+/* Node Circle */
+.node-circle {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Node Spinner */
+.node-spinner {
+  width: 50%;
+  height: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Node Label */
+.node-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.node-title {
+  font-weight: 500;
+}
+
+.node-child-count {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.375rem;
+  background: rgba(102, 126, 234, 0.8);
+  border-radius: 10px;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+/* Node Details Panel */
+.node-details-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 320px;
+  height: 100%;
+  background: white;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.2);
+  overflow-y: auto;
+  z-index: 50;
+  padding: 1.5rem;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.panel-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.panel-close:hover {
+  color: #374151;
+}
+
+.node-details-panel h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  color: #1f2937;
+  padding-right: 2rem;
+}
+
+.node-text {
+  margin: 0 0 1.5rem 0;
+  color: #4b5563;
+  line-height: 1.6;
+  font-size: 0.875rem;
+}
+
+.panel-meta {
+  margin: 0 0 1.5rem 0;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.panel-meta > div {
+  margin-bottom: 0.5rem;
+}
+
+.panel-meta > div:last-child {
+  margin-bottom: 0;
+}
+
+.panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.btn {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.btn-secondary {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #d1d5db;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .node-details-panel {
+    width: 100%;
+    height: 50vh;
+    top: auto;
+    bottom: 0;
+    animation: slideInUp 0.3s ease-out;
+  }
+
+  @keyframes slideInUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .fractal-hud {
+    flex-wrap: wrap;
+  }
+
+  .hud-button,
+  .hud-info {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+  }
+}

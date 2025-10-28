@@ -147,6 +147,80 @@ console.log('Root:', result.rootNode.title);
 
 ---
 
+## Fractal View Documentation (Phase 2 - COMPLETE ✅)
+
+### Using the Fractal View
+
+1. **Start the development server**:
+   ```bash
+   npm start
+   ```
+
+2. **Import a document**:
+   - Click "Paste Text or URL to Begin"
+   - Paste document text
+   - Click "Generate Fractal"
+   - Wait for import to complete
+
+3. **Open Fractal View**:
+   - Click "Open Fractal View" button in success card
+   - Or click "Open Fractal View →" button in modal
+
+4. **Interact with the fractal**:
+   - **Pan**: Click and drag canvas
+   - **Zoom**: Mouse wheel (zoom towards cursor)
+   - **Select node**: Left-click any node → opens details panel
+   - **Expand node**: Right-click any node → generates child nodes via AI
+   - **Reset view**: Click "Reset View" button in HUD
+   - **Toggle labels**: Click "Toggle Labels" button in HUD
+
+5. **Navigate back**:
+   - Click "← Back to Import" button (top-left)
+
+### Fractal View Features
+
+- **Radial Tree Layout**: Root at center, children radiate outward
+- **Visual Encoding**: Node size = child count, color = depth (purple → blue)
+- **Interactive Expansion**: Right-click to generate child nodes via Writer API
+- **Node Details Panel**: Click to view full text, metadata, expand button
+- **HUD Controls**: Node count, zoom level, reset view, toggle labels
+- **Accessibility**: Keyboard navigation, ARIA labels, screen reader support
+
+### Architecture Documentation
+
+See **[docs/FRACTAL_VIEW.md](./FRACTAL_VIEW.md)** for:
+- Complete architecture diagrams
+- Radial layout algorithm
+- Pan/zoom implementation
+- Expansion pipeline details
+- Testing strategy
+- Performance optimizations
+
+### Key Files
+
+- **[src/viz/FractalCanvas.jsx](../src/viz/FractalCanvas.jsx)** — Main visualization component
+- **[src/viz/FractalCanvas.css](../src/viz/FractalCanvas.css)** — Canvas styling
+- **[src/core/expander.js](../src/core/expander.js)** — Node expansion logic
+- **[src/main.jsx](../src/main.jsx)** — View routing (import ↔ fractal)
+
+### Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run Fractal Canvas tests
+npm test fractalCanvas.test.js
+
+# Run Expander tests
+npm test expander.test.js
+
+# Watch mode
+npm test -- --watch
+```
+
+---
+
 ## Next Development Tasks
 
 ### Phase 1: Import & Summarization ✅ COMPLETE
@@ -158,29 +232,34 @@ console.log('Root:', result.rootNode.title);
 - ✅ **Persistence** — Save nodes to IndexedDB using `fractamind-indexer.js`
 - ⏳ **URL Extraction** — Fetch and parse HTML (future enhancement)
 
-### Phase 2: Visualization
-- [ ] **Canvas Renderer** — Draw nodes as circles/rectangles with titles
-- [ ] **Tree Layout Algorithm** — Position nodes using radial or hierarchical layout
-- [ ] **Zoom/Pan Controls** — Implement mouse wheel zoom and drag-to-pan
-- [ ] **Node Interaction** — Hover states, click handlers, focus rings
-- [ ] **Depth Styling** — Color gradient based on node depth (root → leaf)
+### Phase 2: Fractal Canvas + Expansion ✅ COMPLETE
+- ✅ **Canvas Renderer** — Draw nodes as circles with titles
+- ✅ **Tree Layout Algorithm** — Radial layout with BFS traversal
+- ✅ **Zoom/Pan Controls** — Mouse wheel zoom + drag-to-pan
+- ✅ **Node Interaction** — Click to select, right-click to expand
+- ✅ **Depth Styling** — Color gradient purple → blue by depth
+- ✅ **Writer API Integration** — Call Chrome Writer API to expand nodes
+- ✅ **Child Node Generation** — Parse 2-4 child nodes from AI response
+- ✅ **Tree Update** — Add children to parent node, update IndexedDB
+- ✅ **Embedding Generation** — Call Embeddings API for each new node
+- ✅ **Morton Key Computation** — Use `computeMortonKeyFromEmbedding()` from indexer
+- ✅ **Index Update** — Save Morton keys to `mortonIndex` store
+- ✅ **Node Details Panel** — Show full text, metadata, expand button
+- ✅ **HUD Controls** — Reset view, toggle labels, node count, zoom level
+- ✅ **Progress Indicators** — Animated progress during expansion
+- ✅ **Error Handling** — Graceful failure with user-friendly messages
+- ✅ **Accessibility** — Keyboard navigation, ARIA labels
+- ✅ **Deduplication** — Prevent duplicate child nodes by content hash
+- ✅ **Rate Limiting** — Exponential backoff for AI API calls
 
-### Phase 3: Node Expansion
-- [ ] **Writer API Integration** — Call Chrome Writer API to expand nodes
-- [ ] **Child Node Generation** — Parse 2-4 child nodes from AI response
-- [ ] **Tree Update** — Add children to parent node, update IndexedDB
-- [ ] **Embedding Generation** — Call Embeddings API for each new node
-- [ ] **Morton Key Computation** — Use `computeMortonKeyFromEmbedding()` from indexer
-- [ ] **Index Update** — Save Morton keys to `mortonIndex` store
-
-### Phase 4: Semantic Search
+### Phase 3: Semantic Search
 - [ ] **Search UI** — Input bar with debounced queries
 - [ ] **Query Embedding** — Generate embedding for search text
 - [ ] **Range Scan** — Use `rangeScanByMortonHex()` to fetch candidates
 - [ ] **Cosine Reranking** — Compute cosine similarity on full embeddings
 - [ ] **Result Highlighting** — Visualize matching nodes on canvas
 
-### Phase 5: Export & Polish
+### Phase 4: Export & Polish
 - [ ] **JSON Export** — Serialize full fractal tree
 - [ ] **Markdown Export** — Convert tree to nested bullet list
 - [ ] **Subtree Filtering** — Export only selected branches
