@@ -42,16 +42,121 @@ This directory contains technical specifications and developer guides for Fracta
 
 ---
 
+## Import Flow Documentation (Phase 1 - COMPLETE ✅)
+
+### Running the Import Flow
+
+1. **Start the development server**:
+   ```bash
+   npm start
+   ```
+
+2. **Open the app** in Chrome Canary (with Built-in AI enabled)
+
+3. **Use the ChoreComponent**:
+   - Click "Paste Text or URL to Begin"
+   - Paste document text (up to ~10,000 words)
+   - Click "Generate Fractal"
+
+4. **Watch the progress**:
+   - "Analyzing document..." — Summarization in progress
+   - "Generating embeddings..." — Creating vector embeddings
+   - "Saving to database..." — Persisting to IndexedDB
+   - "Import complete!" — Success!
+
+5. **Inspect the result**:
+   - Open Chrome DevTools Console
+   - Check IndexedDB: Application → IndexedDB → fractamind-db
+   - View created nodes in the success card
+
+### Import Pipeline Architecture
+
+The import flow follows this sequence:
+
+```
+User Input (ChoreComponent)
+  ↓
+handleSeedSubmit() [src/core/importer.js]
+  ↓
+importDocument() → summarizeDocument() [src/ai/chromeAI.js]
+  ↓
+parseSummaryToNodes() → Create FractalNode objects
+  ↓
+attachEmbeddingsAndKeys() → batchGenerateEmbeddings() [src/ai/chromeAI.js]
+  ↓
+computeQuantizationParams() [src/db/fractamind-indexer.js]
+  ↓
+computeMortonKeyFromEmbedding() → Generate Morton hex keys
+  ↓
+persistProject() → saveNode() [src/db/fractamind-indexer.js]
+  ↓
+Success!
+```
+
+### Key Files
+
+- **[src/ai/chromeAI.js](../src/ai/chromeAI.js)** — Chrome Built-in AI wrappers
+  - `summarizeDocument(text, options)` — Summarize into 3-7 topics
+  - `generateEmbedding(text)` — Generate Float32Array embedding
+  - `batchGenerateEmbeddings(texts)` — Batch embedding generation
+
+- **[src/core/importer.js](../src/core/importer.js)** — Import pipeline
+  - `handleSeedSubmit(text, projectMeta, onProgress)` — Main entry point
+  - `importDocument(text, projectMeta)` — Summarization + node creation
+  - `parseSummaryToNodes(summaryResult, options)` — Parse AI output to nodes
+  - `attachEmbeddingsAndKeys(nodes)` — Embed + Morton key computation
+  - `persistProject(data)` — Save to IndexedDB
+
+- **[src/components/chore-component/ChoreComponent.jsx](../src/components/chore-component/ChoreComponent.jsx)** — UI entry point
+
+### Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test file
+npm test importer.test.js
+
+# Watch mode
+npm test -- --watch
+```
+
+### Example Usage
+
+```javascript
+import { handleSeedSubmit } from './core/importer';
+
+const text = `
+  Artificial Intelligence is transforming industries...
+
+  Machine learning enables computers to learn from data...
+
+  Natural language processing allows computers to understand human language...
+`;
+
+const result = await handleSeedSubmit(
+  text,
+  { name: 'AI Overview', sourceUrl: null },
+  (progress) => console.log(progress)
+);
+
+console.log('Created nodes:', result.nodes.length);
+console.log('Root:', result.rootNode.title);
+```
+
+---
+
 ## Next Development Tasks
 
-After scaffolding is complete, implement features in this order:
-
-### Phase 1: Import & Summarization
-- [ ] **Text Input Pipeline** — Handle pasted text, URLs, and clipboard content
-- [ ] **URL Extraction** — Fetch and parse HTML, extract main content (use Readability.js or similar)
-- [ ] **Summarizer Integration** — Connect Chrome Summarizer API to generate 3-7 top-level nodes
-- [ ] **Node Creation** — Parse AI response into `FractalNode` objects with UUIDs
-- [ ] **Initial Persistence** — Save top-level nodes to IndexedDB using `fractamind-indexer.js`
+### Phase 1: Import & Summarization ✅ COMPLETE
+- ✅ **Text Input Pipeline** — Handle pasted text via ChoreComponent
+- ✅ **Summarizer Integration** — Connect Chrome Summarizer/Prompt API
+- ✅ **Node Creation** — Parse AI response into `FractalNode` objects with UUIDs
+- ✅ **Embedding Generation** — Generate vectors using Chrome Embeddings API
+- ✅ **Morton Key Computation** — Compute locality-preserving indices
+- ✅ **Persistence** — Save nodes to IndexedDB using `fractamind-indexer.js`
+- ⏳ **URL Extraction** — Fetch and parse HTML (future enhancement)
 
 ### Phase 2: Visualization
 - [ ] **Canvas Renderer** — Draw nodes as circles/rectangles with titles

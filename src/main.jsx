@@ -1,27 +1,79 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import ChoreComponent from './components/chore-component/ChoreComponent';
+import { handleSeedSubmit } from './core/importer';
 import './index.css';
 
 function App() {
-  const handleSeedSubmit = async (seedText) => {
-    console.log('Seed text submitted:', seedText);
+  const [importedProject, setImportedProject] = useState(null);
 
-    // TODO: Connect to AI pipeline
-    // 1. Call Chrome Summarizer API to generate top-level nodes
-    // 2. Create FractalNode objects with UUIDs
-    // 3. Generate embeddings for each node
-    // 4. Compute Morton keys using fractamind-indexer
-    // 5. Save nodes to IndexedDB
-    // 6. Render fractal visualization
+  const onSeedSubmit = async (seedText, onProgress) => {
+    console.log('Seed text submitted:', seedText.slice(0, 100) + '...');
 
-    // For now, just log the input
-    alert(`Received ${seedText.length} characters. AI integration coming soon!`);
+    // Call the import pipeline with progress callback
+    const result = await handleSeedSubmit(
+      seedText,
+      {
+        name: 'Imported Document',
+        sourceUrl: null,
+      },
+      onProgress
+    );
+
+    console.log('Import complete:', {
+      projectId: result.project.id,
+      nodeCount: result.nodes.length,
+      rootNode: result.rootNode.title,
+    });
+
+    setImportedProject(result);
+    return result;
+  };
+
+  const handleSuccess = (result) => {
+    console.log('Import succeeded! Project ready to visualize.');
+    // TODO: Navigate to fractal visualization
   };
 
   return (
     <div className="app">
-      <ChoreComponent onSeedSubmit={handleSeedSubmit} />
+      <ChoreComponent onSeedSubmit={onSeedSubmit} onSuccess={handleSuccess} />
+
+      {/* Placeholder UI for imported project */}
+      {importedProject && (
+        <div
+          style={{
+            padding: '2rem',
+            maxWidth: '800px',
+            margin: '2rem auto',
+            background: '#f9fafb',
+            borderRadius: '8px',
+          }}
+        >
+          <h2>Import Successful!</h2>
+          <p>
+            <strong>Project:</strong> {importedProject.project.name}
+          </p>
+          <p>
+            <strong>Root Node:</strong> {importedProject.rootNode.title}
+          </p>
+          <p>
+            <strong>Nodes Created:</strong> {importedProject.nodes.length}
+          </p>
+          <details>
+            <summary>View Nodes</summary>
+            <ul>
+              {importedProject.nodes.map((node) => (
+                <li key={node.id}>
+                  <strong>{node.title}</strong>
+                  <br />
+                  {node.text.slice(0, 100)}...
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
     </div>
   );
 }

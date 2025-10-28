@@ -328,6 +328,19 @@ async function initDB() {
 /////////////////////////
 // Export for modules  //
 /////////////////////////
+// ES6 exports
+export {
+  initDB,
+  saveNode,
+  getNode,
+  deleteNode,
+  rangeScanByMortonHex,
+  computeQuantizationParams,
+  computeMortonKeyFromEmbedding,
+  reduceEmbedding,
+};
+
+// CommonJS fallback for Node environments
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     initDB,
@@ -339,8 +352,10 @@ if (typeof module !== 'undefined' && module.exports) {
     computeMortonKeyFromEmbedding,
     reduceEmbedding,
   };
-} else {
-  // attach to window for browser global usage
+}
+
+// Browser global fallback
+if (typeof window !== 'undefined') {
   window.FractamindIndexer = {
     initDB,
     saveNode,

@@ -10,19 +10,28 @@ import './ChoreComponent.css';
  * @param {Object} props
  * @param {Function} props.onSeedSubmit - Callback function called with submitted text
  * @param {boolean} props.autoShow - If true, modal opens on mount (default: false)
+ * @param {Function} props.onSuccess - Callback when import succeeds (optional)
  */
-const ChoreComponent = ({ onSeedSubmit, autoShow = false }) => {
+const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess }) => {
   const [isModalOpen, setIsModalOpen] = useState(autoShow);
   const [seedText, setSeedText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState({ step: '', progress: 0, message: '' });
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
 
   const handleOpen = () => {
     setIsModalOpen(true);
+    setError(null);
+    setSuccess(false);
   };
 
   const handleClose = () => {
     setIsModalOpen(false);
     setSeedText('');
+    setError(null);
+    setSuccess(false);
+    setProgress({ step: '', progress: 0, message: '' });
   };
 
   const handleSubmit = async (e) => {
@@ -33,12 +42,31 @@ const ChoreComponent = ({ onSeedSubmit, autoShow = false }) => {
     }
 
     setIsSubmitting(true);
+    setError(null);
+    setSuccess(false);
 
     try {
-      await onSeedSubmit(seedText.trim());
-      handleClose();
-    } catch (error) {
-      console.error('Error submitting seed text:', error);
+      // Call onSeedSubmit with progress callback
+      const result = await onSeedSubmit(seedText.trim(), (progressData) => {
+        setProgress(progressData);
+      });
+
+      setSuccess(true);
+      setProgress({ step: 'complete', progress: 1.0, message: 'Import complete!' });
+
+      // Call success callback if provided
+      if (onSuccess) {
+        onSuccess(result);
+      }
+
+      // Auto-close after short delay
+      setTimeout(() => {
+        handleClose();
+      }, 1500);
+    } catch (err) {
+      console.error('Error submitting seed text:', err);
+      setError(err.message || 'Import failed. Please try again.');
+      setProgress({ step: 'error', progress: 0, message: '' });
     } finally {
       setIsSubmitting(false);
     }
@@ -125,6 +153,33 @@ Examples:
                 All processing happens locally in your browser. Your data never leaves your device.
               </p>
 
+              {/* Progress indicator */}
+              {isSubmitting && progress.message && (
+                <div className="chore-progress">
+                  <div className="chore-progress-bar-container">
+                    <div
+                      className="chore-progress-bar"
+                      style={{ width: `${progress.progress * 100}%` }}
+                    />
+                  </div>
+                  <p className="chore-progress-message">{progress.message}</p>
+                </div>
+              )}
+
+              {/* Success message */}
+              {success && (
+                <div className="chore-alert chore-alert-success">
+                  Success! Your fractal is ready to explore.
+                </div>
+              )}
+
+              {/* Error message */}
+              {error && (
+                <div className="chore-alert chore-alert-error">
+                  <strong>Error:</strong> {error}
+                </div>
+              )}
+
               <div className="chore-modal-actions">
                 <button
                   type="button"
@@ -140,7 +195,7 @@ Examples:
                   disabled={!seedText.trim() || isSubmitting}
                   aria-label="Submit text to generate fractal"
                 >
-                  {isSubmitting ? 'Processing...' : 'Generate Fractal'}
+                  {isSubmitting ? progress.message || 'Processing...' : 'Generate Fractal'}
                 </button>
               </div>
             </form>
