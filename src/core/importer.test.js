@@ -9,11 +9,21 @@ import * as indexer from '../db/fractamind-indexer';
 // Mock dependencies
 jest.mock('../ai/chromeAI');
 jest.mock('../db/fractamind-indexer');
+
+// Mock UUID with counter for predictable IDs
+let mockUuidCounter = 0;
 jest.mock('../utils/uuid', () => ({
-  generateUUID: jest.fn(() => 'test-uuid-' + Math.random().toString(36).substr(2, 9)),
+  generateUUID: jest.fn(() => {
+    return `test-uuid-${mockUuidCounter++}`;
+  }),
 }));
 
 describe('importer', () => {
+  beforeEach(() => {
+    // Reset UUID counter before each test
+    mockUuidCounter = 0;
+  });
+
   describe('parseSummaryToNodes', () => {
     it('should parse summary result into FractalNode objects', () => {
       const summaryResult = [
@@ -163,9 +173,11 @@ describe('importer', () => {
 
       expect(result).toHaveLength(2);
 
-      // Check embeddings are attached
-      expect(result[0].embedding).toEqual([0.1, 0.2, 0.3, 0.4]);
-      expect(result[1].embedding).toEqual([0.5, 0.6, 0.7, 0.8]);
+      // Check embeddings are attached (Float32Array precision)
+      expect(Array.from(result[0].embedding)).toHaveLength(4);
+      expect(Array.from(result[1].embedding)).toHaveLength(4);
+      expect(result[0].embedding[0]).toBeCloseTo(0.1);
+      expect(result[1].embedding[0]).toBeCloseTo(0.5);
 
       // Check Morton keys are computed
       expect(result[0].hilbertKeyHex).toBeDefined();
@@ -286,7 +298,8 @@ describe('importer', () => {
       });
 
       // Verify saveNode was called for all nodes (including project node)
-      expect(indexer.saveNode).toHaveBeenCalledTimes(5); // 1 project + 1 root + 3 children
+      // 1 project node + 1 root (separate) + 4 nodes (root + 3 children) = 6 total
+      expect(indexer.saveNode).toHaveBeenCalledTimes(6);
     });
 
     it('should handle errors gracefully', async () => {

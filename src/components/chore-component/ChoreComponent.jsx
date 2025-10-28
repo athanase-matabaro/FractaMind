@@ -11,8 +11,10 @@ import './ChoreComponent.css';
  * @param {Function} props.onSeedSubmit - Callback function called with submitted text
  * @param {boolean} props.autoShow - If true, modal opens on mount (default: false)
  * @param {Function} props.onSuccess - Callback when import succeeds (optional)
+ * @param {Function} props.onOpenFractalView - Callback to navigate to fractal view (optional)
+ * @param {boolean} props.hasImportedProject - Whether a project has been imported (optional)
  */
-const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess }) => {
+const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess, onOpenFractalView, hasImportedProject = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(autoShow);
   const [seedText, setSeedText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,10 +61,10 @@ const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess }) => {
         onSuccess(result);
       }
 
-      // Auto-close after short delay
-      setTimeout(() => {
-        handleClose();
-      }, 1500);
+      // Don't auto-close - let user click "Open Fractal View" button
+      // setTimeout(() => {
+      //   handleClose();
+      // }, 1500);
     } catch (err) {
       console.error('Error submitting seed text:', err);
       setError(err.message || 'Import failed. Please try again.');
@@ -169,7 +171,29 @@ Examples:
               {/* Success message */}
               {success && (
                 <div className="chore-alert chore-alert-success">
-                  Success! Your fractal is ready to explore.
+                  <strong>Success!</strong> Your fractal is ready to explore.
+                  {onOpenFractalView && (
+                    <button
+                      onClick={() => {
+                        handleClose();
+                        onOpenFractalView();
+                      }}
+                      style={{
+                        display: 'block',
+                        marginTop: '0.75rem',
+                        padding: '0.5rem 1rem',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        background: '#065f46',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Open Fractal View →
+                    </button>
+                  )}
                 </div>
               )}
 
