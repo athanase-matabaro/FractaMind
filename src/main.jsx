@@ -3,19 +3,26 @@ import ReactDOM from 'react-dom/client';
 import ChoreComponent from './components/chore-component/ChoreComponent';
 import FractalCanvas from './viz/FractalCanvas';
 import TimelineView from './viz/TimelineView';
+import WorkspaceView from './viz/WorkspaceView';
 import { handleSeedSubmit } from './core/importer';
 import { initMemoryDB, recordInteraction } from './core/memory';
+import { initRegistry } from './core/projectRegistry';
+import { initFederation } from './core/federation';
 import { getNode } from './db/fractamind-indexer';
 import './index.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState('import'); // 'import' | 'fractal' | 'timeline'
+  const [currentView, setCurrentView] = useState('import'); // 'import' | 'fractal' | 'timeline' | 'workspace'
   const [importedProject, setImportedProject] = useState(null);
 
-  // Initialize memory database on app load
+  // Initialize databases on app load
   useEffect(() => {
-    initMemoryDB().catch(err => {
-      console.error('Failed to initialize memory database:', err);
+    Promise.all([
+      initMemoryDB(),
+      initRegistry(),
+      initFederation()
+    ]).catch(err => {
+      console.error('Failed to initialize databases:', err);
     });
   }, []);
 
@@ -94,6 +101,29 @@ function App() {
 
       // The FractalCanvas will handle centering the node
       // We'll pass the nodeId as a prop
+    }
+  };
+
+  const handleOpenWorkspace = () => {
+    setCurrentView('workspace');
+  };
+
+  const handleWorkspaceNodeClick = async ({ nodeId, projectId }) => {
+    // Load the project if not currently loaded
+    if (!importedProject || importedProject.project.id !== projectId) {
+      try {
+        const node = await getNode(nodeId);
+        if (node) {
+          // For now, just switch to fractal view with the current project
+          // TODO: Implement full project switching
+          console.log('Workspace node clicked:', { nodeId, projectId });
+          setCurrentView('fractal');
+        }
+      } catch (error) {
+        console.error('Failed to load node:', error);
+      }
+    } else {
+      setCurrentView('fractal');
     }
   };
 
@@ -193,6 +223,20 @@ function App() {
             >
               📅 Timeline
             </button>
+            <button
+              onClick={handleOpenWorkspace}
+              style={{
+                padding: '0.5rem 1rem',
+                background: 'white',
+                border: '2px solid #667eea',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                color: '#667eea',
+              }}
+            >
+              🏢 Workspace
+            </button>
           </div>
           <FractalCanvas
             projectId={importedProject.project.id}
@@ -206,6 +250,13 @@ function App() {
       {currentView === 'timeline' && (
         <TimelineView
           onItemClick={handleTimelineItemClick}
+          onClose={() => setCurrentView(importedProject ? 'fractal' : 'import')}
+        />
+      )}
+
+      {currentView === 'workspace' && (
+        <WorkspaceView
+          onNodeClick={handleWorkspaceNodeClick}
           onClose={() => setCurrentView(importedProject ? 'fractal' : 'import')}
         />
       )}
