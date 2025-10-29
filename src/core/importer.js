@@ -21,6 +21,8 @@ import {
   computeMortonKeyFromEmbedding,
 } from '../db/fractamind-indexer.js';
 import { generateUUID } from '../utils/uuid.js';
+import { registerProject } from './projectRegistry.js';
+import { addProjectIndex, initFederation } from './federation.js';
 
 /**
  * Main entry point called by ChoreComponent.onSeedSubmit
@@ -34,6 +36,7 @@ export async function handleSeedSubmit(text, projectMeta = {}, onProgress = null
   try {
     // Ensure IndexedDB is initialized
     await initDB();
+    await initFederation();
 
     // Step 1: Report progress
     onProgress?.({ step: 'summarizing', progress: 0.1, message: 'Analyzing document...' });
@@ -50,6 +53,11 @@ export async function handleSeedSubmit(text, projectMeta = {}, onProgress = null
 
     // Step 4: Persist to IndexedDB
     await persistProject({ ...project, nodes: nodesWithEmbeddings, rootNode });
+
+    onProgress?.({ step: 'federating', progress: 0.9, message: 'Registering in workspace...' });
+
+    // Step 5: Register project in federation workspace
+    await registerProjectInWorkspace(project, nodesWithEmbeddings, rootNode);
 
     onProgress?.({ step: 'complete', progress: 1.0, message: 'Import complete!' });
 
@@ -293,4 +301,41 @@ export async function loadProject(projectId) {
     rootNode,
     nodes,
   };
+}
+
+/**
+ * Register project in federation workspace
+ * @param {Object} project - Project metadata
+ * @param {Array} nodes - Project nodes with embeddings
+ * @param {Object} rootNode - Root node
+ * @returns {Promise<void>}
+ */
+async function registerProjectInWorkspace(project, nodes, rootNode) {
+  try {
+    // Register in project registry
+    await registerProject({
+      projectId: project.id,
+      name: project.name,
+      importDate: project.createdAt || new Date().toISOString(),
+      rootNodeId: project.rootNodeId || rootNode?.id,
+      nodeCount: nodes.length + 1, // +1 for root node
+      embeddingCount: nodes.filter(n => n.embedding).length,
+      isActive: true,
+      weight: 1.0,
+      meta: {
+        sourceUrl: project.meta?.sourceUrl,
+        description: project.description,
+        tags: project.meta?.tags || []
+      }
+    });
+
+    // Add to federated index
+    const allNodes = rootNode ? [rootNode, ...nodes] : nodes;
+    await addProjectIndex(project.id, allNodes, { recomputeQuant: true });
+
+    console.log(`Registered project ${project.id} in federation workspace`);
+  } catch (error) {
+    console.warn(`Failed to register project in workspace: ${error.message}`);
+    // Don't fail the entire import if federation fails
+  }
 }
