@@ -12,7 +12,7 @@
  * 5. Persist to IndexedDB (persistProject)
  */
 
-import { summarizeDocument, generateEmbedding, batchGenerateEmbeddings } from '../ai/chromeAI.js';
+import { summarizeDocument, generateEmbedding, batchGenerateEmbeddings, checkAIAvailability } from '../ai/chromeAI.js';
 import {
   initDB,
   saveNode,
@@ -21,6 +21,8 @@ import {
   computeMortonKeyFromEmbedding,
 } from '../db/fractamind-indexer.js';
 import { generateUUID } from '../utils/uuid.js';
+import { registerProject } from './projectRegistry.js';
+import { addProjectIndex, initFederation } from './federation.js';
 
 /**
  * Main entry point called by ChoreComponent.onSeedSubmit
@@ -34,22 +36,67 @@ export async function handleSeedSubmit(text, projectMeta = {}, onProgress = null
   try {
     // Ensure IndexedDB is initialized
     await initDB();
+    await initFederation();
+
+    // Check AI availability and warn user if not available
+    const availability = checkAIAvailability();
+    if (!availability.allAvailable) {
+      console.warn('Some Chrome Built-in AI APIs are not available:', availability.missingAPIs);
+      console.warn('Falling back to mock mode. For full AI functionality, enable chrome://flags/#optimization-guide-on-device-model');
+      onProgress?.({
+        step: 'warning',
+        progress: 0.05,
+        message: `AI fallback mode enabled (missing: ${availability.missingAPIs.join(', ')})`
+      });
+    }
 
     // Step 1: Report progress
     onProgress?.({ step: 'summarizing', progress: 0.1, message: 'Analyzing document...' });
 
-    // Step 2: Import and summarize document
-    const { project, rootNode, nodes } = await importDocument(text, projectMeta);
+    // Step 2: Import and summarize document with timeout
+    let importResult;
+    try {
+      importResult = await withTimeout(
+        importDocument(text, projectMeta),
+        30000, // 30 second timeout
+        'Document summarization timed out after 30 seconds'
+      );
+    } catch (error) {
+      console.error('Import document failed:', error);
+      throw new Error(`Failed to analyze document: ${error.message}`);
+    }
+
+    const { project, rootNode, nodes } = importResult;
 
     onProgress?.({ step: 'embedding', progress: 0.5, message: 'Generating embeddings...' });
 
-    // Step 3: Attach embeddings and Morton keys
-    const nodesWithEmbeddings = await attachEmbeddingsAndKeys(nodes);
+    // Step 3: Attach embeddings and Morton keys with timeout
+    let nodesWithEmbeddings;
+    try {
+      nodesWithEmbeddings = await withTimeout(
+        attachEmbeddingsAndKeys(nodes),
+        60000, // 60 second timeout (embeddings take longer)
+        'Embedding generation timed out after 60 seconds'
+      );
+    } catch (error) {
+      console.error('Embedding generation failed:', error);
+      throw new Error(`Failed to generate embeddings: ${error.message}`);
+    }
 
     onProgress?.({ step: 'persisting', progress: 0.8, message: 'Saving to database...' });
 
     // Step 4: Persist to IndexedDB
     await persistProject({ ...project, nodes: nodesWithEmbeddings, rootNode });
+
+    onProgress?.({ step: 'federating', progress: 0.9, message: 'Registering in workspace...' });
+
+    // Step 5: Register project in federation workspace (non-blocking, errors are warnings)
+    try {
+      await registerProjectInWorkspace(project, nodesWithEmbeddings, rootNode);
+    } catch (error) {
+      console.warn('Failed to register in workspace:', error);
+      // Continue - federation failure is non-critical
+    }
 
     onProgress?.({ step: 'complete', progress: 1.0, message: 'Import complete!' });
 
@@ -60,8 +107,25 @@ export async function handleSeedSubmit(text, projectMeta = {}, onProgress = null
     };
   } catch (error) {
     console.error('Import failed:', error);
+    onProgress?.({ step: 'error', progress: 0, message: error.message });
     throw new Error(`Import failed: ${error.message}`);
   }
+}
+
+/**
+ * Wrap a promise with a timeout
+ * @param {Promise} promise - Promise to wrap
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @param {string} errorMessage - Error message if timeout occurs
+ * @returns {Promise} - Promise that rejects if timeout occurs
+ */
+function withTimeout(promise, timeoutMs, errorMessage) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+    )
+  ]);
 }
 
 /**
@@ -293,4 +357,41 @@ export async function loadProject(projectId) {
     rootNode,
     nodes,
   };
+}
+
+/**
+ * Register project in federation workspace
+ * @param {Object} project - Project metadata
+ * @param {Array} nodes - Project nodes with embeddings
+ * @param {Object} rootNode - Root node
+ * @returns {Promise<void>}
+ */
+async function registerProjectInWorkspace(project, nodes, rootNode) {
+  try {
+    // Register in project registry
+    await registerProject({
+      projectId: project.id,
+      name: project.name,
+      importDate: project.createdAt || new Date().toISOString(),
+      rootNodeId: project.rootNodeId || rootNode?.id,
+      nodeCount: nodes.length + 1, // +1 for root node
+      embeddingCount: nodes.filter(n => n.embedding).length,
+      isActive: true,
+      weight: 1.0,
+      meta: {
+        sourceUrl: project.meta?.sourceUrl,
+        description: project.description,
+        tags: project.meta?.tags || []
+      }
+    });
+
+    // Add to federated index
+    const allNodes = rootNode ? [rootNode, ...nodes] : nodes;
+    await addProjectIndex(project.id, allNodes, { recomputeQuant: true });
+
+    console.log(`Registered project ${project.id} in federation workspace`);
+  } catch (error) {
+    console.warn(`Failed to register project in workspace: ${error.message}`);
+    // Don't fail the entire import if federation fails
+  }
 }
