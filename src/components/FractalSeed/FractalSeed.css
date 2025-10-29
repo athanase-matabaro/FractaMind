@@ -1,0 +1,208 @@
+/**
+ * FractalSeed Component Styles
+ *
+ * CSS-based animation for the fractal seed visualization.
+ * Uses stroke-dashoffset for line drawing and transform for node appearance.
+ */
+
+.fractal-seed-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.fractal-seed {
+  display: block;
+  overflow: visible;
+}
+
+/* ==========================================
+   Branches Animation
+   ========================================== */
+
+.fractal-branch {
+  opacity: 0;
+  stroke-dashoffset: var(--branch-length, 50);
+  transition: opacity 0.1s ease-out;
+}
+
+.fractal-seed.animating .fractal-branch {
+  opacity: 1;
+  animation: branch-grow var(--animation-duration, 1200ms) ease-out forwards;
+}
+
+@keyframes branch-grow {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ==========================================
+   Nodes Animation
+   ========================================== */
+
+.fractal-node {
+  opacity: 0;
+  transform-origin: center;
+  transform: scale(0);
+}
+
+.fractal-seed.animating .fractal-node {
+  animation: node-appear 0.3s ease-out forwards;
+}
+
+@keyframes node-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Root node has a subtle pulse when complete */
+.fractal-seed.complete .fractal-node-root {
+  animation: root-pulse 2s ease-in-out infinite;
+}
+
+@keyframes root-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ==========================================
+   Glow Effect (optional enhancement)
+   ========================================== */
+
+.fractal-glow {
+  opacity: 0;
+}
+
+.fractal-seed.animating .fractal-glow {
+  animation: glow-fade-in 0.6s ease-out forwards;
+}
+
+@keyframes glow-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.fractal-seed.complete .fractal-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ==========================================
+   Reduced Motion Support
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .fractal-seed.animating .fractal-branch {
+    animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
+    transition: none;
+  }
+
+  .fractal-seed.animating .fractal-node {
+    animation: none;
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .fractal-seed.complete .fractal-node-root,
+  .fractal-seed.complete .fractal-glow {
+    animation: none;
+    opacity: 1;
+  }
+
+  .fractal-glow {
+    display: none; /* Hide glow entirely in reduced motion */
+  }
+}
+
+/* ==========================================
+   Size Variants
+   ========================================== */
+
+/* Small variant (e.g., for loading indicators) */
+.fractal-seed-container.size-sm {
+  width: 80px;
+  height: 80px;
+}
+
+.fractal-seed-container.size-sm .fractal-node {
+  r: 4;
+}
+
+.fractal-seed-container.size-sm .fractal-node-root {
+  r: 6;
+}
+
+/* Medium variant (default) */
+.fractal-seed-container.size-md {
+  width: 200px;
+  height: 200px;
+}
+
+/* Large variant (e.g., for hero section) */
+.fractal-seed-container.size-lg {
+  width: 320px;
+  height: 320px;
+}
+
+/* ==========================================
+   Color Variants
+   ========================================== */
+
+/* Colors are passed via CSS custom properties in inline styles */
+/* But provide some common presets for convenience */
+
+.fractal-seed.color-accent {
+  --seed-color: var(--color-accent, #667eea);
+}
+
+.fractal-seed.color-success {
+  --seed-color: var(--color-success, #10b981);
+}
+
+.fractal-seed.color-muted {
+  --seed-color: var(--color-gray-400, #9ca3af);
+}
+
+/* ==========================================
+   Accessibility
+   ========================================== */
+
+/* Hide decorative SVG from screen readers if needed */
+.fractal-seed[aria-hidden='true'] {
+  pointer-events: none;
+}
+
+/* Ensure focus styles if SVG is interactive */
+.fractal-seed:focus-visible {
+  outline: 2px solid var(--color-accent, #667eea);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm, 6px);
+}
