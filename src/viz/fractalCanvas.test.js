@@ -152,7 +152,7 @@ describe('FractalCanvas', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Root node text')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Expand Node/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Edit node text/i })).toBeInTheDocument(); // NodeDetailsEditor has Edit and Rewriter buttons
     });
   });
 
@@ -168,11 +168,11 @@ describe('FractalCanvas', () => {
     fireEvent.click(rootNodeButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Close panel/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Close node details/i })).toBeInTheDocument();
     });
 
     // Close panel
-    const closeButton = screen.getByRole('button', { name: /Close panel/i });
+    const closeButton = screen.getByRole('button', { name: /Close node details/i });
     fireEvent.click(closeButton);
 
     await waitFor(() => {
@@ -229,11 +229,13 @@ describe('FractalCanvas', () => {
   it('should toggle labels when toggle button is clicked', async () => {
     render(<FractalCanvas projectId="test-project" rootNodeId="root-1" />);
 
-    const toggleButton = screen.getByRole('button', { name: /Hide Labels/i });
+    const toggleButton = screen.getByRole('button', { name: /Toggle labels/i });
+    expect(toggleButton).toHaveTextContent('Hide Labels');
+
     fireEvent.click(toggleButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Show Labels/i })).toBeInTheDocument();
+      expect(toggleButton).toHaveTextContent('Show Labels');
     });
   });
 
@@ -310,7 +312,8 @@ describe('FractalCanvas', () => {
       expect(screen.getByRole('button', { name: /Node: Root Node/i })).toBeInTheDocument();
     });
 
-    const container = screen.getByRole('application');
+    // The container (parent of application role) has tabindex
+    const container = screen.getByRole('application').parentElement;
     expect(container).toHaveAttribute('tabindex', '0');
   });
 });

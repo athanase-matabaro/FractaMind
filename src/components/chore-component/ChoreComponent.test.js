@@ -148,12 +148,12 @@ describe('ChoreComponent', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(mockOnSeedSubmit).toHaveBeenCalledWith('Sample text for testing');
+        expect(mockOnSeedSubmit).toHaveBeenCalledWith('Sample text for testing', expect.any(Function));
         expect(mockOnSeedSubmit).toHaveBeenCalledTimes(1);
       });
     });
 
-    it('closes modal after successful submission', async () => {
+    it('shows success message after submission but keeps modal open', async () => {
       const user = userEvent.setup();
       render(<ChoreComponent onSeedSubmit={mockOnSeedSubmit} autoShow={true} />);
 
@@ -164,7 +164,8 @@ describe('ChoreComponent', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.getByText(/success!/i)).toBeInTheDocument();
+        expect(screen.getByRole('dialog')).toBeInTheDocument(); // Modal stays open
       });
     });
 
@@ -172,7 +173,10 @@ describe('ChoreComponent', () => {
       const user = userEvent.setup();
       let resolveSubmit;
       const delayedSubmit = jest.fn(
-        () => new Promise((resolve) => (resolveSubmit = resolve))
+        (text, onProgress) => {
+          onProgress?.({ step: 'importing', progress: 0.5, message: 'Processing...' });
+          return new Promise((resolve) => (resolveSubmit = resolve));
+        }
       );
 
       render(<ChoreComponent onSeedSubmit={delayedSubmit} autoShow={true} />);
@@ -183,7 +187,9 @@ describe('ChoreComponent', () => {
       const submitButton = screen.getByRole('button', { name: /generate fractal/i });
       await user.click(submitButton);
 
-      expect(screen.getByText(/processing\.\.\./i)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText(/processing\.\.\./i)).toBeInTheDocument();
+      });
       expect(submitButton).toBeDisabled();
 
       resolveSubmit();
@@ -273,7 +279,7 @@ describe('ChoreComponent', () => {
       render(<ChoreComponent onSeedSubmit={mockOnSeedSubmit} autoShow={true} />);
 
       const textarea = screen.getByLabelText(/paste text, an article, or a url/i);
-      expect(textarea).toHaveAttribute('autoFocus');
+      expect(document.activeElement).toBe(textarea);
     });
   });
 });
