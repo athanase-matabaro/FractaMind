@@ -47,7 +47,11 @@ const OnboardPopover = ({
    */
   useEffect(() => {
     if (isOpen && textareaRef.current) {
-      setTimeout(() => textareaRef.current.focus(), 100);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }, 100);
     }
   }, [isOpen]);
 
@@ -72,7 +76,10 @@ const OnboardPopover = ({
     setText(example.content);
     // Scroll to textarea
     if (textareaRef.current) {
-      textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // scrollIntoView might not be available in test environment
+      if (typeof textareaRef.current.scrollIntoView === 'function') {
+        textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       textareaRef.current.focus();
     }
   };
