@@ -1,0 +1,228 @@
+/**
+ * ExamplesCarousel Component Styles
+ */
+
+.examples-carousel {
+  padding: var(--spacing-lg) 0;
+}
+
+.examples-title {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.examples-subtitle {
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+/* Grid layout */
+.examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+}
+
+/* Individual example card */
+.example-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-white);
+  border: 2px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--motion-ease-out);
+  position: relative;
+}
+
+.example-card:hover {
+  border-color: var(--color-accent-muted);
+  background: var(--color-gray-50);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.example-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+}
+
+.example-card:active {
+  transform: translateY(-2px);
+}
+
+/* Selected state */
+.example-card-selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-white);
+  box-shadow: var(--shadow-md);
+}
+
+.example-card-selected:hover {
+  background: var(--color-accent-dark);
+  border-color: var(--color-accent-dark);
+  transform: translateY(-4px);
+}
+
+.example-card-selected .example-card-description {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.example-card-selected .example-card-badge {
+  color: var(--color-white);
+}
+
+/* Icon */
+.example-card-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-gray-100);
+  border-radius: var(--radius-md);
+  transition: background var(--motion-fast) var(--motion-ease-out);
+}
+
+.example-card:hover .example-card-icon {
+  background: var(--color-accent-muted);
+}
+
+.example-card-selected .example-card-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Content */
+.example-card-content {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+.example-card-title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: inherit;
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.example-card-description {
+  font-size: var(--font-size-small);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: var(--line-height-normal);
+}
+
+/* Badge (arrow icon) */
+.example-card-badge {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-gray-400);
+  transition: transform var(--motion-fast) var(--motion-ease-out);
+}
+
+.example-card:hover .example-card-badge {
+  transform: translateX(4px);
+  color: var(--color-accent);
+}
+
+.example-card-selected .example-card-badge {
+  color: var(--color-white);
+}
+
+/* ==========================================
+   Responsive Design
+   ========================================== */
+
+@media (max-width: 767px) {
+  .examples-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .example-card {
+    flex-direction: row;
+    text-align: left;
+  }
+}
+
+@media (max-width: 639px) {
+  .example-card-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .example-card-title {
+    font-size: var(--font-size-body-small);
+  }
+
+  .example-card-description {
+    font-size: var(--font-size-tiny);
+  }
+}
+
+/* ==========================================
+   Reduced Motion Support
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .example-card:hover,
+  .example-card:active {
+    transform: none;
+  }
+
+  .example-card-selected:hover {
+    transform: none;
+  }
+
+  .example-card:hover .example-card-badge {
+    transform: none;
+  }
+}
+
+/* ==========================================
+   Loading State
+   ========================================== */
+
+.example-card.loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.example-card.loading .example-card-content {
+  position: relative;
+}
+
+.example-card.loading .example-card-content::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}

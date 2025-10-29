@@ -1,0 +1,153 @@
+/**
+ * ToneSelector Component Styles
+ */
+
+.tone-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.tone-selector-label {
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* Buttons container */
+.tone-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+/* Individual tone button */
+.tone-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  background: var(--color-white);
+  border: 2px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--motion-ease-out);
+  flex: 1;
+  min-width: 120px;
+}
+
+.tone-button:hover:not(:disabled) {
+  border-color: var(--color-accent-muted);
+  background: var(--color-gray-50);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.tone-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+}
+
+.tone-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Selected state */
+.tone-button-selected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-white);
+  box-shadow: var(--shadow-md);
+}
+
+.tone-button-selected:hover:not(:disabled) {
+  background: var(--color-accent-dark);
+  border-color: var(--color-accent-dark);
+  transform: translateY(-2px);
+}
+
+.tone-button-selected .tone-button-description {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Icon */
+.tone-button-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  opacity: 0.8;
+}
+
+.tone-button-selected .tone-button-icon {
+  opacity: 1;
+}
+
+/* Label */
+.tone-button-label {
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Description */
+.tone-button-description {
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: var(--line-height-normal);
+}
+
+/* ==========================================
+   Responsive Design
+   ========================================== */
+
+@media (max-width: 639px) {
+  .tone-buttons {
+    flex-direction: column;
+  }
+
+  .tone-button {
+    flex-direction: row;
+    justify-content: flex-start;
+    min-width: auto;
+  }
+
+  .tone-button-description {
+    text-align: left;
+    flex: 1;
+  }
+}
+
+/* ==========================================
+   Reduced Motion Support
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .tone-button:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .tone-button:active:not(:disabled) {
+    transform: none;
+  }
+
+  .tone-button-selected:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ==========================================
+   Compact variant (without descriptions)
+   ========================================== */
+
+.tone-selector.compact .tone-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  min-width: 80px;
+}
+
+.tone-selector.compact .tone-button-icon {
+  display: none;
+}
