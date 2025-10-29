@@ -12,9 +12,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getNode } from '../db/fractamind-indexer';
 import { expandNode } from '../core/expander';
+import SearchHUD from './SearchHUD';
+import NodeDetailsEditor from '../components/NodeDetails/NodeDetailsEditor';
 import './FractalCanvas.css';
 
-const FractalCanvas = ({ projectId, rootNodeId, onNodeSelect }) => {
+const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => {
   // State
   const [nodes, setNodes] = useState(new Map());
   const [selectedNodeId, setSelectedNodeId] = useState(null);
@@ -22,6 +24,7 @@ const FractalCanvas = ({ projectId, rootNodeId, onNodeSelect }) => {
   const [showLabels, setShowLabels] = useState(true);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(null);
+  const [showNodeEditor, setShowNodeEditor] = useState(false);
 
   // Transform state (pan/zoom)
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
@@ -154,6 +157,7 @@ const FractalCanvas = ({ projectId, rootNodeId, onNodeSelect }) => {
     (nodeId, event) => {
       event.stopPropagation();
       setSelectedNodeId(nodeId);
+      setShowNodeEditor(true);
 
       if (onNodeSelect) {
         const node = nodes.get(nodeId);
@@ -320,8 +324,74 @@ const FractalCanvas = ({ projectId, rootNodeId, onNodeSelect }) => {
   const nodePositions = calculateNodePositions();
   const selectedNode = selectedNodeId ? nodes.get(selectedNodeId) : null;
 
+  /**
+   * Handle search result selection - center node and open editor
+   */
+  const handleSearchResultSelect = useCallback(async (result) => {
+    console.log('Search result selected:', result.nodeId);
+
+    // Center and pulse the node
+    const position = nodePositions.get(result.nodeId);
+    if (position) {
+      // Center view on node
+      setTransform({
+        x: -position.x * transform.scale,
+        y: -position.y * transform.scale,
+        scale: transform.scale,
+      });
+    }
+
+    // Select and open editor
+    setSelectedNodeId(result.nodeId);
+    setShowNodeEditor(true);
+
+    // Notify parent
+    if (onNodeSelect) {
+      const node = nodes.get(result.nodeId);
+      onNodeSelect(node);
+    }
+  }, [nodePositions, nodes, transform.scale, onNodeSelect]);
+
+  /**
+   * Handle node update from editor
+   */
+  const handleNodeUpdate = useCallback(async (updatedNode) => {
+    console.log('Node updated:', updatedNode.id);
+
+    // Update nodes map
+    setNodes((prev) => {
+      const updated = new Map(prev);
+      updated.set(updatedNode.id, updatedNode);
+      return updated;
+    });
+
+    // Reload node tree to get any structural changes
+    await loadNodeTree(updatedNode.id, 0, 1);
+  }, [loadNodeTree]);
+
+  /**
+   * Handle node click - open editor
+   */
+  const handleNodeClickForEditor = useCallback((nodeId) => {
+    setSelectedNodeId(nodeId);
+    setShowNodeEditor(true);
+
+    if (onNodeSelect) {
+      const node = nodes.get(nodeId);
+      onNodeSelect(node);
+    }
+  }, [nodes, onNodeSelect]);
+
   return (
     <div className="fractal-canvas-container" onKeyDown={handleKeyDown} tabIndex={0}>
+      {/* Search HUD */}
+      <SearchHUD
+        projectId={projectId}
+        quantParams={quantParams}
+        onResultSelect={handleSearchResultSelect}
+        disabled={expandingNodeId !== null}
+      />
+
       {/* HUD Controls */}
       <div className="fractal-hud">
         <button onClick={handleResetView} className="hud-button" aria-label="Reset view">
@@ -439,43 +509,17 @@ const FractalCanvas = ({ projectId, rootNodeId, onNodeSelect }) => {
         </svg>
       </div>
 
-      {/* Node Details Panel */}
-      {selectedNode && (
-        <div className="node-details-panel">
-          <button
-            onClick={() => setSelectedNodeId(null)}
-            className="panel-close"
-            aria-label="Close panel"
-          >
-            ×
-          </button>
-          <h3>{selectedNode.title}</h3>
-          <p className="node-text">{selectedNode.text}</p>
-          <div className="panel-meta">
-            <div>
-              <strong>Depth:</strong> {selectedNode.meta?.depth || 0}
-            </div>
-            <div>
-              <strong>Children:</strong> {selectedNode.children?.length || 0}
-            </div>
-            <div>
-              <strong>Created:</strong>{' '}
-              {new Date(selectedNode.meta?.createdAt).toLocaleDateString()}
-            </div>
-          </div>
-          <div className="panel-actions">
-            <button
-              onClick={(e) => handleNodeRightClick(selectedNodeId, { preventDefault: () => {}, stopPropagation: () => {} })}
-              className="btn btn-primary"
-              disabled={expandingNodeId === selectedNodeId}
-            >
-              {expandingNodeId === selectedNodeId ? 'Expanding...' : 'Expand Node'}
-            </button>
-            <button className="btn btn-secondary" disabled>
-              Edit (Coming Soon)
-            </button>
-          </div>
-        </div>
+      {/* Node Details Editor */}
+      {showNodeEditor && selectedNode && (
+        <NodeDetailsEditor
+          node={selectedNode}
+          quantParams={quantParams}
+          onNodeUpdate={handleNodeUpdate}
+          onClose={() => {
+            setShowNodeEditor(false);
+            setSelectedNodeId(null);
+          }}
+        />
       )}
     </div>
   );
