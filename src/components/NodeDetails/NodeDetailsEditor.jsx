@@ -12,6 +12,8 @@
 
 import { useState, useEffect } from 'react';
 import { rewriteNode, acceptRewrite, rejectRewrite, getRewriteHistory, getRewriteStats } from '../../core/rewriter.js';
+import { recordInteraction } from '../../core/memory.js';
+import ContextSuggestions from './ContextSuggestions.jsx';
 import './NodeDetailsEditor.css';
 
 const NodeDetailsEditor = ({ node, quantParams, onNodeUpdate, onClose }) => {
@@ -65,6 +67,17 @@ const NodeDetailsEditor = ({ node, quantParams, onNodeUpdate, onClose }) => {
 
       setIsEditing(false);
       setProgress({ step: 'complete', progress: 1.0, message: 'Saved!' });
+
+      // Record edit interaction
+      await recordInteraction({
+        nodeId: node.id,
+        actionType: 'edit',
+        embedding: updatedNode.embedding || null,
+        meta: {
+          title: node.title,
+          changeLength: editedText.length - node.text.length,
+        },
+      }).catch(err => console.error('Failed to record edit interaction:', err));
 
       // Notify parent
       onNodeUpdate?.(updatedNode);
@@ -125,6 +138,17 @@ const NodeDetailsEditor = ({ node, quantParams, onNodeUpdate, onClose }) => {
       setShowRewriter(false);
       setRewriteSuggestion(null);
       setProgress({ step: 'complete', progress: 1.0, message: 'Rewrite applied!' });
+
+      // Record rewrite interaction
+      await recordInteraction({
+        nodeId: node.id,
+        actionType: 'rewrite',
+        embedding: updatedNode.embedding || null,
+        meta: {
+          title: node.title,
+          rewriteOptions,
+        },
+      }).catch(err => console.error('Failed to record rewrite interaction:', err));
 
       // Notify parent
       onNodeUpdate?.(updatedNode);
@@ -416,6 +440,16 @@ const NodeDetailsEditor = ({ node, quantParams, onNodeUpdate, onClose }) => {
             <strong>Error:</strong> {error}
           </div>
         )}
+
+        {/* Context Suggestions */}
+        <ContextSuggestions
+          currentNodeEmbedding={node.embedding}
+          onSuggestionClick={(suggestion) => {
+            // Let parent handle navigation
+            console.log('Context suggestion clicked:', suggestion.nodeId);
+          }}
+          limit={3}
+        />
       </div>
     </div>
   );

@@ -12,6 +12,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getNode } from '../db/fractamind-indexer';
 import { expandNode } from '../core/expander';
+import { recordInteraction } from '../core/memory';
 import SearchHUD from './SearchHUD';
 import NodeDetailsEditor from '../components/NodeDetails/NodeDetailsEditor';
 import './FractalCanvas.css';
@@ -190,6 +191,18 @@ const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => 
         // Reload the node tree to include new children
         if (newChildren.length > 0) {
           await loadNodeTree(nodeId, 0, 2); // Reload with depth 2
+
+          // Record expand interaction
+          const expandedNode = await getNode(nodeId);
+          await recordInteraction({
+            nodeId,
+            actionType: 'expand',
+            embedding: expandedNode?.embedding || null,
+            meta: {
+              title: expandedNode?.title || 'Unknown',
+              childrenCreated: newChildren.length,
+            },
+          }).catch(err => console.error('Failed to record expand interaction:', err));
         }
 
         setProgress(null);
