@@ -24,17 +24,10 @@ const WorkspaceView = ({ onNodeClick, onClose }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [projectStats, setProjectStats] = useState(null);
-  const [federationStats, setFederationStats] = useState(null);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [expandedProjects, setExpandedProjects] = useState(new Set());
 
   const searchInputRef = useRef(null);
-
-  // Load projects and stats on mount
-  useEffect(() => {
-    loadProjects();
-    loadStats();
-  }, []);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -47,16 +40,18 @@ const WorkspaceView = ({ onNodeClick, onClose }) => {
 
   const loadStats = useCallback(async () => {
     try {
-      const [pStats, fStats] = await Promise.all([
-        getProjectStats(),
-        getFederationStats()
-      ]);
+      const pStats = await getProjectStats();
       setProjectStats(pStats);
-      setFederationStats(fStats);
     } catch (error) {
       console.error('Failed to load stats:', error);
     }
   }, []);
+
+  // Load projects and stats on mount
+  useEffect(() => {
+    loadProjects();
+    loadStats();
+  }, [loadProjects, loadStats]);
 
   // Perform cross-project search
   const handleSearch = useCallback(async () => {
@@ -312,7 +307,7 @@ const WorkspaceView = ({ onNodeClick, onClose }) => {
         {searchQuery && searchResults.length === 0 && !isSearching && !searchError && (
           <div className="search-empty">
             <span className="search-empty-icon">🔍</span>
-            <p>No results found for "{searchQuery}"</p>
+            <p>No results found for &ldquo;{searchQuery}&rdquo;</p>
             <p className="search-empty-hint">Try different keywords or check if projects are active</p>
           </div>
         )}
