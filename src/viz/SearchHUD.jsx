@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { semanticSearch } from '../core/searcher.js';
+import { recordInteraction } from '../core/memory.js';
 import './SearchHUD.css';
 
 const SearchHUD = ({ projectId, quantParams, onResultSelect, disabled = false }) => {
@@ -67,6 +68,18 @@ const SearchHUD = ({ projectId, quantParams, onResultSelect, disabled = false })
 
         setResults(searchResults);
         setSelectedIndex(-1);
+
+        // Record search interaction (store the query text)
+        if (searchResults.length > 0) {
+          await recordInteraction({
+            nodeId: null, // Search is a global action
+            actionType: 'search',
+            meta: {
+              queryText: searchQuery,
+              resultsCount: searchResults.length,
+            },
+          }).catch(err => console.error('Failed to record search interaction:', err));
+        }
       } catch (err) {
         console.error('Search failed:', err);
         setError(err.message || 'Search failed');
