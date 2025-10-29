@@ -253,7 +253,7 @@ const TimelineView = ({ onItemClick, onClose }) => {
                   <h3 className="timeline-date-header">{dateLabel}</h3>
 
                   <div className="timeline-items">
-                    {items.map((interaction, index) => {
+                    {items.map((interaction) => {
                       const globalIndex = filteredInteractions.indexOf(interaction);
                       return (
                         <TimelineItem
