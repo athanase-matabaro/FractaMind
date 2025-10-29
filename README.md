@@ -36,6 +36,7 @@ FractaMind solves this by combining fractal visualization with local AI-powered 
 - ✅ **Fractal visualization** — Zoomable canvas/SVG renderer with depth-based styling
 - ✅ **Recursive expansion** — Click any node to generate child ideas
 - ✅ **Semantic search** — Fast locality-preserving search using Morton curve indexing
+- ✅ **Multi-document workspace** — Manage multiple projects with cross-project search (Phase 5)
 - ✅ **Offline-ready** — IndexedDB persistence; works without network
 - ✅ **Keyboard accessible** — Arrow keys, Enter, Space navigation; screen reader support
 - ✅ **Export** — JSON and Markdown formats
