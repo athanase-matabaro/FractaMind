@@ -398,3 +398,119 @@ export async function batchGenerateEmbeddings(texts) {
 
   return embeddings;
 }
+
+/**
+ * Rewrite text with specified tone and length using Writer API
+ *
+ * @param {string} text - Original text to rewrite
+ * @param {Object} options - Rewrite options
+ * @param {string} options.tone - Tone: 'concise' | 'technical' | 'creative' | 'formal' | 'casual' (default: 'concise')
+ * @param {string} options.length - Length: 'short' | 'medium' | 'long' (default: 'medium')
+ * @param {string} options.instruction - Optional custom instruction
+ * @param {boolean} options.mock - Force mock mode for testing (default: false)
+ * @returns {Promise<string>} - Rewritten text
+ */
+export async function rewriteText(text, options = {}) {
+  const {
+    tone = 'concise',
+    length = 'medium',
+    instruction = '',
+    mock = false,
+  } = options;
+
+  // Force mock mode if requested (for testing)
+  if (mock) {
+    return createMockRewrite(text, tone, length);
+  }
+
+  const availability = checkAIAvailability();
+
+  if (!availability.available.writer && !availability.available.prompt) {
+    console.warn('No AI API available for rewriting. Using mock.');
+    return createMockRewrite(text, tone, length);
+  }
+
+  // Use Prompt API for more control over rewriting
+  if (availability.available.prompt) {
+    try {
+      const session = await window.ai.languageModel.create({
+        systemPrompt: `You are a professional text rewriter. Maintain the core meaning while adjusting ${tone} tone and ${length} length.`,
+      });
+
+      const prompt = instruction
+        ? `${instruction}\n\nOriginal text:\n${text.slice(0, 2000)}\n\nRewritten text:`
+        : `Rewrite the following text with a ${tone} tone and ${length} length. Keep the core meaning but adjust the style:\n\nOriginal:\n${text.slice(0, 2000)}\n\nRewritten:`;
+
+      const response = await session.prompt(prompt);
+
+      // Clean up response (remove any prefixes like "Rewritten:" or quotes)
+      let cleaned = response.trim();
+      cleaned = cleaned.replace(/^(Rewritten:|Rewritten text:|Result:)\s*/i, '');
+      cleaned = cleaned.replace(/^["']|["']$/g, '');
+
+      return cleaned;
+    } catch (error) {
+      console.error('Prompt API rewrite failed:', error);
+      return createMockRewrite(text, tone, length);
+    }
+  }
+
+  // Fallback: Use Writer API
+  if (availability.available.writer) {
+    try {
+      const toneMap = {
+        concise: 'neutral',
+        technical: 'formal',
+        creative: 'casual',
+        formal: 'formal',
+        casual: 'casual',
+      };
+
+      const writer = await window.ai.writer.create({
+        tone: toneMap[tone] || 'neutral',
+        format: 'plain-text',
+        length: length,
+      });
+
+      const prompt = instruction
+        ? `${instruction}: ${text.slice(0, 2000)}`
+        : `Rewrite this text: ${text.slice(0, 2000)}`;
+
+      const response = await writer.write(prompt);
+      return response.trim();
+    } catch (error) {
+      console.error('Writer API rewrite failed:', error);
+      return createMockRewrite(text, tone, length);
+    }
+  }
+
+  return createMockRewrite(text, tone, length);
+}
+
+/**
+ * Create mock rewrite for development/testing
+ */
+function createMockRewrite(text, tone, length) {
+  const words = text.split(/\s+/);
+
+  // Adjust length
+  let targetWords = words.length;
+  if (length === 'short') {
+    targetWords = Math.floor(words.length * 0.6);
+  } else if (length === 'long') {
+    targetWords = Math.floor(words.length * 1.4);
+  }
+
+  // Apply tone prefix
+  const tonePrefix = {
+    concise: '[Concise] ',
+    technical: '[Technical] ',
+    creative: '[Creative] ',
+    formal: '[Formal] ',
+    casual: '[Casual] ',
+  }[tone] || '';
+
+  const baseText = words.slice(0, targetWords).join(' ');
+
+  return `${tonePrefix}${baseText}${length === 'long' ? '. Additional elaboration and details added.' : ''}`;
+}

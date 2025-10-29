@@ -141,6 +141,7 @@ function App() {
           <FractalCanvas
             projectId={importedProject.project.id}
             rootNodeId={importedProject.rootNode.id}
+            quantParams={importedProject.project.meta?.quantParams || null}
             onNodeSelect={handleNodeSelect}
           />
         </div>
