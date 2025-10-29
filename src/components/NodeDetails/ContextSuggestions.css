@@ -1,0 +1,127 @@
+.context-suggestions {
+  margin-top: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.context-suggestions-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.context-suggestions-toggle:hover {
+  background: #f3f4f6;
+}
+
+.context-suggestions-toggle:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+.context-suggestions-icon {
+  font-size: 1.25rem;
+}
+
+.context-suggestions-label {
+  flex: 1;
+  font-weight: 600;
+  color: #374151;
+  text-align: left;
+}
+
+.context-suggestions-arrow {
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.context-suggestions-content {
+  padding: 1rem;
+  background: white;
+}
+
+.context-suggestions-loading,
+.context-suggestions-error,
+.context-suggestions-empty {
+  text-align: center;
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.context-suggestions-error {
+  color: #ef4444;
+}
+
+.context-suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.context-suggestion-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.context-suggestion-item:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  transform: translateX(2px);
+}
+
+.context-suggestion-item:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.context-suggestion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.context-suggestion-rank {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.context-suggestion-score {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  background: #3b82f6;
+  color: white;
+  border-radius: 4px;
+}
+
+.context-suggestion-title {
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-suggestion-reason {
+  font-size: 0.75rem;
+  color: #6b7280;
+}

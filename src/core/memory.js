@@ -208,7 +208,6 @@ export async function purgeMemory({ olderThanMs }) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([MEMORY_STORE], 'readwrite');
     const store = transaction.objectStore(MEMORY_STORE);
-    const index = store.index('byAt');
 
     // Get all records
     const getAllRequest = store.getAll();
