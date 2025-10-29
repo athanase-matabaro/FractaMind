@@ -297,6 +297,12 @@
   border: 1px solid #fecaca;
 }
 
+.chore-alert-warning {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
 .chore-alert strong {
   font-weight: 600;
 }

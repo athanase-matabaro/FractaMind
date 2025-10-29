@@ -168,6 +168,13 @@ Examples:
                 </div>
               )}
 
+              {/* Warning indicator (AI fallback mode) */}
+              {progress.step === 'warning' && (
+                <div className="chore-alert chore-alert-warning">
+                  <strong>Note:</strong> {progress.message}
+                </div>
+              )}
+
               {/* Success message */}
               {success && (
                 <div className="chore-alert chore-alert-success">
