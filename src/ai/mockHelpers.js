@@ -195,12 +195,11 @@ export async function mockRewriteText(text, options = {}) {
   // Deterministic transformation based on options
   let result = text;
 
-  // Apply tone transformation
+  // Apply tone transformation (affects content style)
   if (tone === 'concise') {
-    // Return first ~60% of text
+    // Shorten to ~60% for concise tone
     const targetLength = Math.floor(text.length * 0.6);
     result = text.slice(0, targetLength);
-
     // Try to end at sentence boundary
     const lastPeriod = result.lastIndexOf('.');
     if (lastPeriod > targetLength * 0.8) {
@@ -214,14 +213,15 @@ export async function mockRewriteText(text, options = {}) {
     result = `Exploring the concept: ${text}`;
   }
 
-  // Apply length transformation
+  // Apply length transformation (further modifies length)
   if (length === 'short') {
+    // Further reduce to max 100 chars
     result = result.slice(0, Math.min(result.length, 100));
   } else if (length === 'long') {
-    // Repeat key phrases (deterministic expansion)
+    // Expand by repeating first sentence (deterministic)
     const sentences = result.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    if (sentences.length > 1) {
-      result = result + ' ' + sentences[0];
+    if (sentences.length > 0) {
+      result = result + ' ' + sentences[0] + '.';
     }
   }
 
@@ -239,11 +239,12 @@ export function isMockMode() {
   if (typeof process !== 'undefined' && process.env) {
     return process.env.VITE_AI_MODE === 'mock';
   }
-  // Check Vite environment (browser) - wrapped in try/catch for Jest
+  // Check Vite environment (browser) - use eval to prevent Jest parse error
   try {
-    // eslint-disable-next-line no-undef
-    if (import.meta && import.meta.env) {
-      return import.meta.env.VITE_AI_MODE === 'mock';
+    // eslint-disable-next-line no-eval
+    const meta = eval('import.meta');
+    if (meta && meta.env) {
+      return meta.env.VITE_AI_MODE === 'mock';
     }
   } catch (e) {
     // import.meta not available in this environment
@@ -263,12 +264,13 @@ export function getAITimeout() {
   if (typeof process !== 'undefined' && process.env) {
     timeout = Number(process.env.VITE_AI_TIMEOUT_MS);
   }
-  // Check Vite environment (browser) - wrapped in try/catch for Jest
+  // Check Vite environment (browser) - use eval to prevent Jest parse error
   else {
     try {
-      // eslint-disable-next-line no-undef
-      if (import.meta && import.meta.env) {
-        timeout = Number(import.meta.env.VITE_AI_TIMEOUT_MS);
+      // eslint-disable-next-line no-eval
+      const meta = eval('import.meta');
+      if (meta && meta.env) {
+        timeout = Number(meta.env.VITE_AI_TIMEOUT_MS);
       }
     } catch (e) {
       // import.meta not available in this environment

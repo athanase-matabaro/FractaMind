@@ -185,6 +185,17 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.onboard-error-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.onboard-error-actions .onboard-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-body-small);
+}
+
 /* Actions */
 .onboard-actions {
   display: flex;

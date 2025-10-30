@@ -25,11 +25,12 @@ function getEnvVar(name, defaultValue = '') {
   if (typeof process !== 'undefined' && process.env && process.env[name]) {
     return process.env[name];
   }
-  // Vite environment - wrapped in try/catch for Jest compatibility
+  // Vite environment - use eval to prevent Jest parse error
   try {
-    // eslint-disable-next-line no-undef
-    if (import.meta && import.meta.env && import.meta.env[name]) {
-      return import.meta.env[name];
+    // eslint-disable-next-line no-eval
+    const meta = eval('import.meta');
+    if (meta && meta.env && meta.env[name]) {
+      return meta.env[name];
     }
   } catch (e) {
     // import.meta not available in this environment
@@ -147,6 +148,8 @@ function parseAIJSON(text) {
 export async function summarizeDocument(text, options = {}) {
   const {
     maxTopics = 5,
+    // format reserved for future use (json/markdown)
+    // eslint-disable-next-line no-unused-vars
     format = 'json',
     mock = false,
     timeoutMs = DEFAULT_TIMEOUT_MS
@@ -344,20 +347,7 @@ export async function generateEmbedding(text, options = {}) {
   }
 }
 
-/**
- * Create deterministic mock embedding for development
- */
-function createMockEmbedding(text) {
-  const hash = text.split('').reduce((s, c) => (s * 31 + c.charCodeAt(0)) | 0, 7);
-  const dims = 512; // Standard dimension
-  const vec = new Float32Array(dims);
-
-  for (let i = 0; i < dims; i++) {
-    vec[i] = Math.sin((hash + i) * 0.1) * 0.01 + Math.cos((hash * i) * 0.05) * 0.005;
-  }
-
-  return vec;
-}
+// Removed createMockEmbedding - use mockHelpers.mockEmbeddingFromText instead
 
 /**
  * Expand a node into 2-4 child nodes
@@ -614,30 +604,4 @@ export async function rewriteText(text, options = {}) {
   return await mockHelpers.mockRewriteText(text, { tone, length });
 }
 
-/**
- * Create mock rewrite for development/testing
- */
-function createMockRewrite(text, tone, length) {
-  const words = text.split(/\s+/);
-
-  // Adjust length
-  let targetWords = words.length;
-  if (length === 'short') {
-    targetWords = Math.floor(words.length * 0.6);
-  } else if (length === 'long') {
-    targetWords = Math.floor(words.length * 1.4);
-  }
-
-  // Apply tone prefix
-  const tonePrefix = {
-    concise: '[Concise] ',
-    technical: '[Technical] ',
-    creative: '[Creative] ',
-    formal: '[Formal] ',
-    casual: '[Casual] ',
-  }[tone] || '';
-
-  const baseText = words.slice(0, targetWords).join(' ');
-
-  return `${tonePrefix}${baseText}${length === 'long' ? '. Additional elaboration and details added.' : ''}`;
-}
+// Removed createMockRewrite - use mockHelpers.mockRewriteText instead
