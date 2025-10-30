@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import Hero from './Hero';
-import { strings } from '../../i18n/strings';
+import Hero from '../../../src/components/Hero/Hero';
+import { strings } from '../../../src/i18n/strings';
 
 describe('Hero', () => {
   describe('Rendering', () => {

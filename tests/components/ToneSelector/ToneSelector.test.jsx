@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import ToneSelector from './ToneSelector';
-import { strings } from '../../i18n/strings';
+import ToneSelector from '../../../src/components/ToneSelector/ToneSelector';
+import { strings } from '../../../src/i18n/strings';
 
 // Mock localStorage
 const localStorageMock = {

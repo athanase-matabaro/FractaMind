@@ -8,13 +8,13 @@ import {
   exportMarkdownSummary,
   exportCanvasSVG,
   getExportStats,
-} from './exporter';
-import * as indexer from '../db/fractamind-indexer';
-import * as uuid from '../utils/uuid';
+} from '../../src/core/exporter';
+import * as indexer from '../../src/db/fractamind-indexer';
+import * as uuid from '../../src/utils/uuid';
 
 // Mock dependencies
-jest.mock('../db/fractamind-indexer');
-jest.mock('../utils/uuid');
+jest.mock('../../src/db/fractamind-indexer');
+jest.mock('../../src/utils/uuid');
 
 // Mock DOM APIs
 global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');

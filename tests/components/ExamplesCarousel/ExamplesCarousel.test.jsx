@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import ExamplesCarousel from './ExamplesCarousel';
-import { strings } from '../../i18n/strings';
+import ExamplesCarousel from '../../../src/components/ExamplesCarousel/ExamplesCarousel';
+import { strings } from '../../../src/i18n/strings';
 
 describe('ExamplesCarousel', () => {
   const mockOnExampleSelect = jest.fn();

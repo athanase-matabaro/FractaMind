@@ -2,17 +2,17 @@
  * Unit and integration tests for importer.js
  */
 
-import { parseSummaryToNodes, attachEmbeddingsAndKeys, handleSeedSubmit } from './importer';
-import * as chromeAI from '../ai/chromeAI';
-import * as indexer from '../db/fractamind-indexer';
+import { parseSummaryToNodes, attachEmbeddingsAndKeys, handleSeedSubmit } from '../../src/core/importer';
+import * as chromeAI from '../../src/ai/chromeAI';
+import * as indexer from '../../src/db/fractamind-indexer';
 
 // Mock dependencies
-jest.mock('../ai/chromeAI');
-jest.mock('../db/fractamind-indexer');
+jest.mock('../../src/ai/chromeAI');
+jest.mock('../../src/db/fractamind-indexer');
 
 // Mock UUID with counter for predictable IDs
 let mockUuidCounter = 0;
-jest.mock('../utils/uuid', () => ({
+jest.mock('../../src/utils/uuid', () => ({
   generateUUID: jest.fn(() => {
     return `test-uuid-${mockUuidCounter++}`;
   }),

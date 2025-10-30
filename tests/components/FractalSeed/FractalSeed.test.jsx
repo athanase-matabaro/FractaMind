@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import FractalSeed from './FractalSeed';
+import FractalSeed from '../../../src/components/FractalSeed/FractalSeed';
 
 describe('FractalSeed', () => {
   describe('Rendering', () => {

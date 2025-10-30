@@ -2,13 +2,13 @@
  * Unit tests for searcher.js - Semantic search pipeline
  */
 
-import { semanticSearch, batchSemanticSearch, getOrCreateQuantParams } from './searcher';
-import * as chromeAI from '../ai/chromeAI';
-import * as indexer from '../db/fractamind-indexer';
+import { semanticSearch, batchSemanticSearch, getOrCreateQuantParams } from '../../src/core/searcher';
+import * as chromeAI from '../../src/ai/chromeAI';
+import * as indexer from '../../src/db/fractamind-indexer';
 
 // Mock dependencies
-jest.mock('../ai/chromeAI');
-jest.mock('../db/fractamind-indexer');
+jest.mock('../../src/ai/chromeAI');
+jest.mock('../../src/db/fractamind-indexer');
 
 describe('searcher', () => {
   beforeEach(() => {

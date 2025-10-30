@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import OnboardPopover from './OnboardPopover';
-import { strings } from '../../i18n/strings';
+import OnboardPopover from '../../../src/components/OnboardPopover/OnboardPopover';
+import { strings } from '../../../src/i18n/strings';
 
 describe('OnboardPopover', () => {
   const mockOnClose = jest.fn();

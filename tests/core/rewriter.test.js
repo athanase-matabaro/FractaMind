@@ -10,13 +10,13 @@ import {
   restoreFromHistory,
   batchRewriteNodes,
   getRewriteStats,
-} from './rewriter';
-import * as chromeAI from '../ai/chromeAI';
-import * as indexer from '../db/fractamind-indexer';
+} from '../../src/core/rewriter';
+import * as chromeAI from '../../src/ai/chromeAI';
+import * as indexer from '../../src/db/fractamind-indexer';
 
 // Mock dependencies
-jest.mock('../ai/chromeAI');
-jest.mock('../db/fractamind-indexer');
+jest.mock('../../src/ai/chromeAI');
+jest.mock('../../src/db/fractamind-indexer');
 
 // Mock crypto.subtle for SHA-256
 global.crypto = {

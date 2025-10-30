@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ChoreComponent from './ChoreComponent';
+import ChoreComponent from '../../../src/components/chore-component/ChoreComponent';
 
 describe('ChoreComponent', () => {
   const mockOnSeedSubmit = jest.fn();

@@ -7,15 +7,15 @@ import {
   batchExpandNodes,
   getExpansionHistory,
   clearContentHashCache,
-} from './expander';
-import * as chromeAI from '../ai/chromeAI';
-import * as indexer from '../db/fractamind-indexer';
-import * as uuid from '../utils/uuid';
+} from '../../src/core/expander';
+import * as chromeAI from '../../src/ai/chromeAI';
+import * as indexer from '../../src/db/fractamind-indexer';
+import * as uuid from '../../src/utils/uuid';
 
 // Mock dependencies
-jest.mock('../ai/chromeAI');
-jest.mock('../db/fractamind-indexer');
-jest.mock('../utils/uuid');
+jest.mock('../../src/../src/ai/chromeAI');
+jest.mock('../../src/../src/db/fractamind-indexer');
+jest.mock('../../src/../src/utils/uuid');
 
 describe('expander', () => {
   let mockNodeId;

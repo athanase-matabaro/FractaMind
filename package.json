@@ -61,6 +61,10 @@
   },
   "jest": {
     "testEnvironment": "jsdom",
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.js",
+      "<rootDir>/tests/**/*.test.jsx"
+    ],
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.js"
     ],
@@ -73,7 +77,8 @@
     "collectCoverageFrom": [
       "src/**/*.{js,jsx}",
       "!src/main.jsx",
-      "!src/**/*.test.{js,jsx}"
+      "!src/**/*.test.{js,jsx}",
+      "!tests/**/*"
     ]
   },
   "babel": {
