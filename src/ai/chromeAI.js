@@ -71,11 +71,14 @@ export function isMockMode() {
  * Check if Chrome Built-in AI APIs are available
  */
 export function checkAIAvailability() {
+  // Check if window exists (browser environment)
+  const hasWindow = typeof window !== 'undefined';
+
   const available = {
-    summarizer: 'ai' in window && 'summarizer' in window.ai,
-    embeddings: 'ai' in window && 'embedding' in window.ai,
-    writer: 'ai' in window && 'writer' in window.ai,
-    prompt: 'ai' in window && 'languageModel' in window.ai,
+    summarizer: hasWindow && 'ai' in window && 'summarizer' in window.ai,
+    embeddings: hasWindow && 'ai' in window && 'embedding' in window.ai,
+    writer: hasWindow && 'ai' in window && 'writer' in window.ai,
+    prompt: hasWindow && 'ai' in window && 'languageModel' in window.ai,
   };
 
   const allAvailable = Object.values(available).every(Boolean);
