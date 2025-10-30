@@ -215,9 +215,18 @@ function createMockSummary(text, maxTopics) {
  * Generate embedding vector for text
  *
  * @param {string} text - Text to embed
+ * @param {Object} options - Generation options
+ * @param {boolean} options.mock - Force use of deterministic mock (for testing)
  * @returns {Promise<Float32Array>} - Embedding vector (typically 512-1536 dims)
  */
-export async function generateEmbedding(text) {
+export async function generateEmbedding(text, options = {}) {
+  const { mock = false } = options;
+
+  // Force mock if requested (for deterministic tests)
+  if (mock) {
+    return createMockEmbedding(text);
+  }
+
   const availability = checkAIAvailability();
 
   if (!availability.available.embeddings) {
@@ -380,14 +389,16 @@ function createMockExpansion(nodeText, title, numChildren) {
  * Batch generate embeddings for multiple texts
  *
  * @param {string[]} texts - Array of texts to embed
+ * @param {Object} options - Generation options
+ * @param {boolean} options.mock - Force use of deterministic mock (for testing)
  * @returns {Promise<Float32Array[]>} - Array of embedding vectors
  */
-export async function batchGenerateEmbeddings(texts) {
+export async function batchGenerateEmbeddings(texts, options = {}) {
   const embeddings = [];
 
   for (const text of texts) {
     try {
-      const embedding = await generateEmbedding(text);
+      const embedding = await generateEmbedding(text, options);
       embeddings.push(embedding);
     } catch (error) {
       console.error(`Failed to embed text: ${text.slice(0, 50)}...`, error);

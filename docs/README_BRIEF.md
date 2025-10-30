@@ -252,22 +252,154 @@ npm test -- --watch
 - ✅ **Deduplication** — Prevent duplicate child nodes by content hash
 - ✅ **Rate Limiting** — Exponential backoff for AI API calls
 
-### Phase 3: Semantic Search
-- [ ] **Search UI** — Input bar with debounced queries
-- [ ] **Query Embedding** — Generate embedding for search text
-- [ ] **Range Scan** — Use `rangeScanByMortonHex()` to fetch candidates
-- [ ] **Cosine Reranking** — Compute cosine similarity on full embeddings
-- [ ] **Result Highlighting** — Visualize matching nodes on canvas
+### Phase 3: Semantic Search ✅ COMPLETE
+- ✅ **Search UI** — Input bar with debounced queries
+- ✅ **Query Embedding** — Generate embedding for search text
+- ✅ **Range Scan** — Use `rangeScanByMortonHex()` to fetch candidates
+- ✅ **Cosine Reranking** — Compute cosine similarity on full embeddings
+- ✅ **Result Highlighting** — Visualize matching nodes on canvas
 
-### Phase 4: Export & Polish
-- [ ] **JSON Export** — Serialize full fractal tree
-- [ ] **Markdown Export** — Convert tree to nested bullet list
-- [ ] **Subtree Filtering** — Export only selected branches
-- [ ] **Node Editing** — Allow users to edit titles/text
-- [ ] **Rewriter Integration** — Use Prompt API to rephrase or summarize
-- [ ] **Animations** — Smooth transitions for expand/collapse
-- [ ] **Keyboard Navigation** — Arrow keys, Enter, Space shortcuts
-- [ ] **Accessibility Audit** — Screen reader testing, ARIA improvements
+### Phase 4: Export & Polish ✅ COMPLETE
+- ✅ **JSON Export** — Serialize full fractal tree
+- ✅ **Markdown Export** — Convert tree to nested bullet list
+- ✅ **Subtree Filtering** — Export only selected branches
+- ✅ **Node Editing** — Allow users to edit titles/text
+- ✅ **Rewriter Integration** — Use Prompt API to rephrase or summarize
+- ✅ **Animations** — Smooth transitions for expand/collapse
+- ✅ **Keyboard Navigation** — Arrow keys, Enter, Space shortcuts
+- ✅ **Accessibility Audit** — Screen reader testing, ARIA improvements
+
+### Phase 5: Multi-Document Federation & Workspace ✅ COMPLETE
+- ✅ **Project Registry** — Manage multiple imported projects
+- ✅ **Federation Index** — Track active projects for cross-search
+- ✅ **Cross-Project Search** — Semantic search across all projects
+- ✅ **Result Merging** — Deduplicate and normalize scores
+- ✅ **Workspace UI** — Project cards with toggle/weight controls
+- ✅ **Freshness Boost** — Prioritize recently updated content
+- ✅ **Project Weights** — Bias search results (0.1x - 3.0x)
+- ✅ **Grouped Results** — Display results by project
+- ✅ **Navigation** — Click result to open in fractal view
+
+---
+
+## Workspace View Documentation (Phase 5 - COMPLETE ✅)
+
+### Using the Workspace
+
+The Workspace provides a unified interface for managing and searching across multiple FractaMind projects.
+
+#### Accessing the Workspace
+
+1. **From Import View**:
+   - Click "🏢 Workspace" button (top menu)
+
+2. **From Fractal View**:
+   - Click "🏢 Workspace" button (top-left controls)
+
+#### Workspace Features
+
+**Project Management**:
+- View all imported projects as cards
+- See node count, creation date, and status for each project
+- Toggle projects active/inactive for search
+- Adjust project weights (0.1x - 3.0x) to bias search results
+- Delete projects (with confirmation)
+
+**Federated Search**:
+- Search across all active projects simultaneously
+- Results grouped by project with expand/collapse
+- Each result shows:
+  - Title and snippet
+  - Similarity score (normalized)
+  - Project weight multiplier
+  - Freshness boost (for recent content)
+- Click any result to navigate to that node in fractal view
+
+**Keyboard Shortcuts**:
+- `/` — Focus search input
+- `g` — Toggle result grouping
+- Arrow keys — Navigate results
+- Enter — Open selected result
+- Escape — Close workspace
+
+#### Cross-Project Search Algorithm
+
+1. **Query Embedding**: Generate embedding for search text
+2. **Per-Project Scan**: For each active project:
+   - Compute Morton key using project's quantization params
+   - Run range scan to get candidate nodes
+   - Calculate cosine similarity
+   - Apply project weight and freshness boost
+3. **Merge & Deduplicate**:
+   - Combine results from all projects
+   - Remove duplicates (same content across projects)
+   - Sort by final score
+4. **Return Top K**: Default 30 results
+
+#### Architecture Documentation
+
+See **[docs/FEDERATION_LAYER.md](./FEDERATION_LAYER.md)** for:
+- Complete federation architecture
+- Cross-search algorithm details
+- Project weighting and scoring formulas
+- Deduplication strategy
+- Performance considerations
+- Testing approach
+
+### Key Files
+
+**Core Logic**:
+- **[src/core/projectRegistry.js](../src/core/projectRegistry.js)** — Project metadata storage
+- **[src/core/federation.js](../src/core/federation.js)** — Federated index manager
+- **[src/core/crossSearcher.js](../src/core/crossSearcher.js)** — Cross-project search engine
+- **[src/utils/mergeUtils.js](../src/utils/mergeUtils.js)** — Result merging utilities
+
+**UI Components**:
+- **[src/viz/WorkspaceView.jsx](../src/viz/WorkspaceView.jsx)** — Main workspace interface
+- **[src/viz/FederatedResults.jsx](../src/viz/FederatedResults.jsx)** — Search results display
+- **[src/hooks/useWorkspace.js](../src/hooks/useWorkspace.js)** — Workspace state hook
+
+### Testing
+
+```bash
+# Run all federation tests
+npm test -- federation.test.js crossSearcher.test.js projectRegistry.test.js
+
+# Run merge utils tests
+npm test -- mergeUtils.test.js
+
+# Run all tests
+npm test
+```
+
+### Example: Programmatic Workspace Usage
+
+```javascript
+import { listProjects } from './core/projectRegistry';
+import { crossProjectSearch } from './core/crossSearcher';
+import { dedupeCandidates } from './utils/mergeUtils';
+
+// List all projects
+const projects = await listProjects();
+console.log(`${projects.length} projects found`);
+
+// Search across all projects
+const results = await crossProjectSearch('artificial intelligence', {
+  topK: 20,
+  projectIds: null, // null = search all active projects
+  applyWeights: true,
+  applyFreshness: true
+});
+
+console.log(`Found ${results.length} results`);
+results.forEach(r => {
+  console.log(`- ${r.title} (${r.projectId}) - ${(r.finalScore * 100).toFixed(0)}%`);
+});
+
+// Deduplicate results manually
+const deduped = dedupeCandidates(results);
+console.log(`After dedup: ${deduped.length} unique results`);
+```
 
 ---
 

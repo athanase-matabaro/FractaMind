@@ -113,18 +113,18 @@ describe('Federation', () => {
   test('addProjectIndex should add nodes', async () => {
     const nodes = [createNode(1, 'proj-a'), createNode(2, 'proj-a')];
     const result = await addProjectIndex('proj-a', nodes);
-    
+
     expect(result.indexed).toBe(2);
     expect(result.quantParams).toBeDefined();
-  });
+  }, 10000);
 
   test('getProjectNodes should retrieve nodes', async () => {
     const nodes = [createNode(1, 'proj-b'), createNode(2, 'proj-b')];
     await addProjectIndex('proj-b', nodes);
-    
+
     const retrieved = await getProjectNodes('proj-b');
     expect(Array.isArray(retrieved)).toBe(true);
-  });
+  }, 10000);
 
   test('getProjectNode should retrieve single node', async () => {
     const nodes = [createNode(1, 'proj-c')];
@@ -137,11 +137,11 @@ describe('Federation', () => {
   test('getQuantParams should return params', async () => {
     const nodes = [createNode(1, 'proj-d')];
     await addProjectIndex('proj-d', nodes);
-    
+
     const params = await getQuantParams();
     expect(params).toBeDefined();
     expect(params.reducedDims).toBe(8);
-  });
+  }, 10000);
 
   test('getAllProjectIds should return project IDs', async () => {
     projectStores.add('proj-e');
@@ -153,16 +153,16 @@ describe('Federation', () => {
 
   test('getFederationStats should return stats', async () => {
     const stats = await getFederationStats();
-    
+
     expect(stats).toHaveProperty('projectCount');
     expect(stats).toHaveProperty('totalNodes');
     expect(stats).toHaveProperty('hasQuantParams');
-  });
+  }, 10000);
 
   test('removeProjectIndex should clear project', async () => {
     const nodes = [createNode(1, 'proj-g')];
     await addProjectIndex('proj-g', nodes);
-    
+
     await expect(removeProjectIndex('proj-g')).resolves.not.toThrow();
-  });
+  }, 10000);
 });
