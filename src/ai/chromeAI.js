@@ -8,7 +8,63 @@
  * - Prompt API: Structured JSON generation
  *
  * All operations run locally in the browser with no data leaving the device.
+ *
+ * ROBUSTNESS FEATURES:
+ * - Configurable timeouts (default: 15s)
+ * - Automatic fallback to deterministic mocks on error/timeout
+ * - Mock mode via VITE_AI_MODE=mock environment variable
+ * - Never leaves UI in permanent loading state
  */
+
+import * as mockHelpers from './mockHelpers.js';
+
+// Configuration from environment variables
+// Support both Vite (import.meta.env) and Jest (process.env)
+function getEnvVar(name, defaultValue = '') {
+  // Jest/Node environment
+  if (typeof process !== 'undefined' && process.env && process.env[name]) {
+    return process.env[name];
+  }
+  // Vite environment - wrapped in try/catch for Jest compatibility
+  try {
+    // eslint-disable-next-line no-undef
+    if (import.meta && import.meta.env && import.meta.env[name]) {
+      return import.meta.env[name];
+    }
+  } catch (e) {
+    // import.meta not available in this environment
+  }
+  return defaultValue;
+}
+
+const DEFAULT_TIMEOUT_MS = Number(getEnvVar('VITE_AI_TIMEOUT_MS', '15000'));
+const AI_MODE = getEnvVar('VITE_AI_MODE', 'live');
+
+/**
+ * Wrap a promise with a timeout
+ * Rejects with TimeoutError if promise doesn't resolve/reject within ms
+ *
+ * @param {Promise} promise - Promise to wrap
+ * @param {number} ms - Timeout in milliseconds
+ * @param {string} msg - Error message for timeout
+ * @returns {Promise} Race between promise and timeout
+ */
+function timeout(promise, ms, msg = 'Operation timed out') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(msg)), ms)
+    )
+  ]);
+}
+
+/**
+ * Check if mock mode is enabled globally
+ * @returns {boolean} True if using mock mode
+ */
+export function isMockMode() {
+  return AI_MODE === 'mock';
+}
 
 /**
  * Check if Chrome Built-in AI APIs are available
@@ -78,30 +134,45 @@ function parseAIJSON(text) {
 
 /**
  * Summarize a document into 3-7 top-level subtopics
+ * SAFE WRAPPER: Applies timeout and automatic fallback to mocks
  *
  * @param {string} text - Document text to summarize (up to ~10,000 words)
  * @param {Object} options - Summarization options
  * @param {number} options.maxTopics - Number of subtopics (default: 5)
  * @param {string} options.format - Output format: 'json' | 'markdown' (default: 'json')
- * @returns {Promise<Array<{title: string, summary: string, keyPoints: string[]}>>}
+ * @param {boolean} options.mock - Force mock mode (default: false)
+ * @param {number} options.timeoutMs - Custom timeout (default: 15s)
+ * @returns {Promise<Object>} Summary with topics array
  */
 export async function summarizeDocument(text, options = {}) {
-  const { maxTopics = 5, format = 'json' } = options;
+  const {
+    maxTopics = 5,
+    format = 'json',
+    mock = false,
+    timeoutMs = DEFAULT_TIMEOUT_MS
+  } = options;
+
+  // Force mock if requested or global mock mode enabled
+  if (mock || isMockMode()) {
+    console.log('Using mock summarization (mode: mock)');
+    return await mockHelpers.mockSummarize(text, { maxTopics });
+  }
 
   // Check API availability
   const availability = checkAIAvailability();
   if (!availability.available.summarizer && !availability.available.prompt) {
     // Fallback for development when APIs aren't available
     console.warn('Chrome Built-in AI not available. Using fallback mock.');
-    return createMockSummary(text, maxTopics);
+    return await mockHelpers.mockSummarize(text, { maxTopics });
   }
 
   // Use Prompt API for structured JSON output (more reliable than Summarizer for JSON)
   if (availability.available.prompt) {
     try {
-      const session = await window.ai.languageModel.create({
+      const sessionPromise = window.ai.languageModel.create({
         systemPrompt: `You are a concise document summarizer. Return ONLY valid JSON with no markdown, no explanations.`,
       });
+      const session = await timeout(sessionPromise, timeoutMs, 'Summarization session creation timed out');
 
       const prompt = `Summarize the following document into ${maxTopics} distinct subtopics. For each subtopic return:
 - title (max 6 words)
@@ -116,7 +187,9 @@ ${text.slice(0, 8000)}
 
 JSON output:`;
 
-      const response = await session.prompt(prompt);
+      const responsePromise = session.prompt(prompt);
+      const response = await timeout(responsePromise, timeoutMs, 'Summarization prompt timed out');
+
       const parsed = parseAIJSON(response);
 
       // Validate response structure
@@ -124,18 +197,23 @@ JSON output:`;
         throw new Error('AI response is not an array');
       }
 
-      // Ensure each item has required fields
+      // Transform to match mockHelpers output format (summary + topics)
       const validated = parsed.map((item, idx) => ({
+        id: `ai-topic-${idx}`,
         title: item.title || `Topic ${idx + 1}`,
         summary: item.summary || '',
+        text: item.summary || '',
         keyPoints: Array.isArray(item.keyPoints) ? item.keyPoints : [],
       }));
 
-      return validated.slice(0, maxTopics);
+      return {
+        summary: validated[0]?.summary || 'Document summary',
+        topics: validated.slice(0, maxTopics)
+      };
     } catch (error) {
       console.error('Prompt API summarization failed:', error);
       // Fall back to mock on error
-      return createMockSummary(text, maxTopics);
+      return await mockHelpers.mockSummarize(text, { maxTopics });
     }
   }
 
@@ -213,18 +291,26 @@ function createMockSummary(text, maxTopics) {
 
 /**
  * Generate embedding vector for text
+ * SAFE WRAPPER: Applies timeout and automatic fallback to mocks
  *
  * @param {string} text - Text to embed
  * @param {Object} options - Generation options
  * @param {boolean} options.mock - Force use of deterministic mock (for testing)
+ * @param {number} options.dims - Embedding dimensions (default: 512)
+ * @param {number} options.timeoutMs - Custom timeout (default: 15s)
  * @returns {Promise<Float32Array>} - Embedding vector (typically 512-1536 dims)
  */
 export async function generateEmbedding(text, options = {}) {
-  const { mock = false } = options;
+  const {
+    mock = false,
+    dims = 512,
+    timeoutMs = DEFAULT_TIMEOUT_MS
+  } = options;
 
-  // Force mock if requested (for deterministic tests)
-  if (mock) {
-    return createMockEmbedding(text);
+  // Force mock if requested or global mock mode enabled
+  if (mock || isMockMode()) {
+    console.log('Using mock embedding (mode: mock)');
+    return mockHelpers.mockEmbeddingFromText(text, dims);
   }
 
   const availability = checkAIAvailability();
@@ -232,12 +318,15 @@ export async function generateEmbedding(text, options = {}) {
   if (!availability.available.embeddings) {
     // Fallback for development
     console.warn('Chrome Embeddings API not available. Using deterministic mock.');
-    return createMockEmbedding(text);
+    return mockHelpers.mockEmbeddingFromText(text, dims);
   }
 
   try {
-    const embedder = await window.ai.embedding.create();
-    const result = await embedder.embed(text.slice(0, 2000)); // Limit to ~2000 chars
+    const embedderPromise = window.ai.embedding.create();
+    const embedder = await timeout(embedderPromise, timeoutMs, 'Embedding creation timed out');
+
+    const embedPromise = embedder.embed(text.slice(0, 2000)); // Limit to ~2000 chars
+    const result = await timeout(embedPromise, timeoutMs, 'Embedding generation timed out');
 
     // Convert to Float32Array if not already
     if (result instanceof Float32Array) {
@@ -251,7 +340,7 @@ export async function generateEmbedding(text, options = {}) {
     throw new Error('Unexpected embedding result format');
   } catch (error) {
     console.error('Embedding generation failed:', error);
-    return createMockEmbedding(text);
+    return mockHelpers.mockEmbeddingFromText(text, dims);
   }
 }
 
@@ -272,29 +361,44 @@ function createMockEmbedding(text) {
 
 /**
  * Expand a node into 2-4 child nodes
+ * SAFE WRAPPER: Applies timeout and automatic fallback to mocks
  *
  * @param {string} nodeText - Parent node text
  * @param {Object} options - Expansion options
  * @param {string} options.title - Parent node title
  * @param {number} options.numChildren - Number of children (default: 3)
+ * @param {boolean} options.mock - Force mock mode (default: false)
+ * @param {number} options.timeoutMs - Custom timeout (default: 15s)
  * @returns {Promise<Array<{title: string, text: string}>>}
  */
 export async function expandNode(nodeText, options = {}) {
-  const { title = '', numChildren = 3 } = options;
+  const {
+    title = '',
+    numChildren = 3,
+    mock = false,
+    timeoutMs = DEFAULT_TIMEOUT_MS
+  } = options;
+
+  // Force mock if requested or global mock mode enabled
+  if (mock || isMockMode()) {
+    console.log('Using mock node expansion (mode: mock)');
+    return await mockHelpers.mockExpandNode(nodeText, { title, numChildren });
+  }
 
   const availability = checkAIAvailability();
 
   if (!availability.available.prompt && !availability.available.writer) {
     console.warn('No AI API available for node expansion. Using mock.');
-    return createMockExpansion(nodeText, title, numChildren);
+    return await mockHelpers.mockExpandNode(nodeText, { title, numChildren });
   }
 
   // Use Prompt API for structured output
   if (availability.available.prompt) {
     try {
-      const session = await window.ai.languageModel.create({
+      const sessionPromise = window.ai.languageModel.create({
         systemPrompt: 'You are an idea-expander. Output ONLY valid JSON with no markdown.',
       });
+      const session = await timeout(sessionPromise, timeoutMs, 'Node expansion session creation timed out');
 
       const prompt = `Given this node, generate ${numChildren} child nodes that expand it. For each child return:
 - title (5 words max)
@@ -308,7 +412,9 @@ Node Text: ${nodeText.slice(0, 1000)}
 
 JSON output:`;
 
-      const response = await session.prompt(prompt);
+      const responsePromise = session.prompt(prompt);
+      const response = await timeout(responsePromise, timeoutMs, 'Node expansion prompt timed out');
+
       const parsed = parseAIJSON(response);
 
       if (!Array.isArray(parsed)) {
@@ -323,7 +429,7 @@ JSON output:`;
       return validated.slice(0, numChildren);
     } catch (error) {
       console.error('Node expansion failed:', error);
-      return createMockExpansion(nodeText, title, numChildren);
+      return await mockHelpers.mockExpandNode(nodeText, { title, numChildren });
     }
   }
 
@@ -412,6 +518,7 @@ export async function batchGenerateEmbeddings(texts, options = {}) {
 
 /**
  * Rewrite text with specified tone and length using Writer API
+ * SAFE WRAPPER: Applies timeout and automatic fallback to mocks
  *
  * @param {string} text - Original text to rewrite
  * @param {Object} options - Rewrite options
@@ -419,6 +526,7 @@ export async function batchGenerateEmbeddings(texts, options = {}) {
  * @param {string} options.length - Length: 'short' | 'medium' | 'long' (default: 'medium')
  * @param {string} options.instruction - Optional custom instruction
  * @param {boolean} options.mock - Force mock mode for testing (default: false)
+ * @param {number} options.timeoutMs - Custom timeout (default: 15s)
  * @returns {Promise<string>} - Rewritten text
  */
 export async function rewriteText(text, options = {}) {
@@ -427,32 +535,36 @@ export async function rewriteText(text, options = {}) {
     length = 'medium',
     instruction = '',
     mock = false,
+    timeoutMs = DEFAULT_TIMEOUT_MS
   } = options;
 
-  // Force mock mode if requested (for testing)
-  if (mock) {
-    return createMockRewrite(text, tone, length);
+  // Force mock mode if requested or global mock mode enabled
+  if (mock || isMockMode()) {
+    console.log('Using mock rewrite (mode: mock)');
+    return await mockHelpers.mockRewriteText(text, { tone, length });
   }
 
   const availability = checkAIAvailability();
 
   if (!availability.available.writer && !availability.available.prompt) {
     console.warn('No AI API available for rewriting. Using mock.');
-    return createMockRewrite(text, tone, length);
+    return await mockHelpers.mockRewriteText(text, { tone, length });
   }
 
   // Use Prompt API for more control over rewriting
   if (availability.available.prompt) {
     try {
-      const session = await window.ai.languageModel.create({
+      const sessionPromise = window.ai.languageModel.create({
         systemPrompt: `You are a professional text rewriter. Maintain the core meaning while adjusting ${tone} tone and ${length} length.`,
       });
+      const session = await timeout(sessionPromise, timeoutMs, 'Rewrite session creation timed out');
 
       const prompt = instruction
         ? `${instruction}\n\nOriginal text:\n${text.slice(0, 2000)}\n\nRewritten text:`
         : `Rewrite the following text with a ${tone} tone and ${length} length. Keep the core meaning but adjust the style:\n\nOriginal:\n${text.slice(0, 2000)}\n\nRewritten:`;
 
-      const response = await session.prompt(prompt);
+      const responsePromise = session.prompt(prompt);
+      const response = await timeout(responsePromise, timeoutMs, 'Rewrite prompt timed out');
 
       // Clean up response (remove any prefixes like "Rewritten:" or quotes)
       let cleaned = response.trim();
@@ -462,7 +574,7 @@ export async function rewriteText(text, options = {}) {
       return cleaned;
     } catch (error) {
       console.error('Prompt API rewrite failed:', error);
-      return createMockRewrite(text, tone, length);
+      return await mockHelpers.mockRewriteText(text, { tone, length });
     }
   }
 
@@ -477,25 +589,29 @@ export async function rewriteText(text, options = {}) {
         casual: 'casual',
       };
 
-      const writer = await window.ai.writer.create({
+      const writerPromise = window.ai.writer.create({
         tone: toneMap[tone] || 'neutral',
         format: 'plain-text',
         length: length,
       });
+      const writer = await timeout(writerPromise, timeoutMs, 'Writer creation timed out');
 
       const prompt = instruction
         ? `${instruction}: ${text.slice(0, 2000)}`
         : `Rewrite this text: ${text.slice(0, 2000)}`;
 
-      const response = await writer.write(prompt);
+      const writePromise = writer.write(prompt);
+      const response = await timeout(writePromise, timeoutMs, 'Writer rewrite timed out');
+
       return response.trim();
     } catch (error) {
       console.error('Writer API rewrite failed:', error);
-      return createMockRewrite(text, tone, length);
+      return await mockHelpers.mockRewriteText(text, { tone, length });
     }
   }
 
-  return createMockRewrite(text, tone, length);
+  // Final fallback
+  return await mockHelpers.mockRewriteText(text, { tone, length });
 }
 
 /**
