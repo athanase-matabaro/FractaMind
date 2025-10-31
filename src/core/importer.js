@@ -13,6 +13,7 @@
  */
 
 import { summarizeDocument, generateEmbedding, batchGenerateEmbeddings, checkAIAvailability } from '../ai/chromeAI.js';
+import { mockSummarize, mockEmbeddingFromText } from '../ai/mockHelpers.js';
 import {
   initDB,
   saveNode,
@@ -23,6 +24,38 @@ import {
 import { generateUUID } from '../utils/uuid.js';
 import { registerProject } from './projectRegistry.js';
 import { addProjectIndex, initFederation } from './federation.js';
+
+/**
+ * Watchdog wrapper - ensures promise resolves within timeout or falls back
+ * @param {Promise} promise - The promise to watch
+ * @param {number} timeoutMs - Max time to wait
+ * @param {*} fallbackValue - Value to return on timeout
+ * @param {string} operationName - Name for logging
+ * @returns {Promise} Resolves with result or fallback
+ */
+async function withWatchdog(promise, timeoutMs, fallbackValue, operationName) {
+  const traceId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+  console.info(`[WATCHDOG START] ${operationName}`, { id: traceId, timeoutMs });
+
+  return Promise.race([
+    promise.then(result => {
+      console.info(`[WATCHDOG SUCCESS] ${operationName}`, { id: traceId });
+      return result;
+    }),
+    new Promise((resolve) => {
+      setTimeout(() => {
+        console.warn(`[WATCHDOG TIMEOUT] ${operationName} - using fallback`, {
+          id: traceId,
+          timeoutMs
+        });
+        resolve(fallbackValue);
+      }, timeoutMs);
+    })
+  ]).catch(error => {
+    console.error(`[WATCHDOG ERROR] ${operationName}`, { id: traceId, error: error.message });
+    return fallbackValue;
+  });
+}
 
 /**
  * Main entry point called by ChoreComponent.onSeedSubmit
@@ -137,7 +170,14 @@ function withTimeout(promise, timeoutMs, errorMessage) {
  */
 export async function importDocument(text, projectMeta = {}) {
   // Summarize document into 3-7 top-level topics
-  const summaryResult = await summarizeDocument(text, { maxTopics: 5 });
+  // Wrap with watchdog to prevent hangs (17s = wrapper 15s + 2s buffer)
+  const mockFallback = await mockSummarize(text, { maxTopics: 5 });
+  const summaryResult = await withWatchdog(
+    summarizeDocument(text, { maxTopics: 5 }),
+    17000,
+    mockFallback,
+    'importDocument.summarize'
+  );
 
   // Create project and root node
   const projectId = generateUUID();
@@ -245,7 +285,17 @@ export function parseSummaryToNodes(summaryResult, options = {}) {
 export async function attachEmbeddingsAndKeys(nodes) {
   // Step 1: Generate embeddings for all nodes
   const texts = nodes.map((node) => `${node.title}. ${node.text}`.slice(0, 2000));
-  const embeddings = await batchGenerateEmbeddings(texts);
+
+  // Wrap with watchdog to prevent hangs (20s = allows for batch processing)
+  const mockEmbeddings = await Promise.all(
+    texts.map(text => mockEmbeddingFromText(text, 512, 'mock'))
+  );
+  const embeddings = await withWatchdog(
+    batchGenerateEmbeddings(texts),
+    20000,
+    mockEmbeddings,
+    'attachEmbeddingsAndKeys.batch'
+  );
 
   // Step 2: Compute quantization parameters from all embeddings
   const quantParams = computeQuantizationParams(

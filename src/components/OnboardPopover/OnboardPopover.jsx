@@ -45,6 +45,7 @@ const OnboardPopover = ({
 
   const textareaRef = useRef(null);
   const modalRef = useRef(null);
+  const watchdogTimerRef = useRef(null);
 
   /**
    * Focus textarea when popover opens
@@ -72,6 +73,17 @@ const OnboardPopover = ({
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, isSubmitting, onClose]);
+
+  /**
+   * Cleanup watchdog timer on unmount
+   */
+  useEffect(() => {
+    return () => {
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+      }
+    };
+  }, []);
 
   /**
    * Handle example selection from carousel
@@ -190,6 +202,20 @@ const OnboardPopover = ({
     setShowSeed(false);
     setAiTimedOut(false);
 
+    const traceId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+    console.info('[UI] submit -> import call', { traceId, mode: demoMode ? 'demo' : 'live' });
+
+    // UI Watchdog: Maximum 30 seconds for entire operation
+    watchdogTimerRef.current = setTimeout(() => {
+      if (isSubmitting) {
+        console.warn('[UI] processing watchdog fired', { traceId, maxMs: 30000 });
+        setIsSubmitting(false);
+        setAiTimedOut(true);
+        setError('Processing took too long. You can retry or continue with a demo summary.');
+        setShowSeed(false);
+      }
+    }, 30000);
+
     try {
       let result;
 
@@ -213,6 +239,14 @@ const OnboardPopover = ({
         });
       }
 
+      console.info('[UI] import returned', { traceId, ok: !!result });
+
+      // Clear watchdog on success
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
+
       // Success!
       setProgress({ step: 'complete', message: strings.processing.success });
       await sleep(800);
@@ -222,6 +256,13 @@ const OnboardPopover = ({
       }
     } catch (err) {
       console.error('Import failed:', err);
+      console.warn('[UI] import fallback', { traceId, error: err.message });
+
+      // Clear watchdog on error
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
 
       // Check if error is a timeout
       if (err.message && err.message.toLowerCase().includes('timed out')) {
