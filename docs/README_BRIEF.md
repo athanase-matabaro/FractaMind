@@ -434,6 +434,174 @@ const canWrite = 'ai' in window && 'writer' in window.ai;
 const canEmbed = 'ai' in window && 'embeddings' in window.ai;
 ```
 
+---
+
+## AI Configuration & Resilience
+
+FractaMind includes robust AI wrapper functions with timeout handling and deterministic fallbacks to ensure the UI never hangs when Chrome Built-in AI is unavailable or slow.
+
+### Environment Configuration
+
+Create a `.env` file (copy from `.env.example`):
+
+```env
+# AI Mode
+# Options: 'live' (use Chrome Built-in AI) | 'mock' (use deterministic fallbacks)
+VITE_AI_MODE=live
+
+# AI Timeout (milliseconds)
+# Default: 15000 (15 seconds)
+# Increase for slow devices, decrease for faster failure detection
+VITE_AI_TIMEOUT_MS=15000
+
+# Feature Flags
+VITE_FEATURE_WORKSPACE=true
+
+# Development
+VITE_ENABLE_DEBUG_LOGS=false
+```
+
+### AI Wrapper Functions
+
+All AI functions in **[src/ai/chromeAI.js](../src/ai/chromeAI.js)** include:
+
+1. **Timeout Protection**: All API calls wrapped with configurable timeout (default 15s)
+2. **Automatic Fallback**: On timeout or API unavailability, returns deterministic mock
+3. **Mock Mode**: Force mock mode for testing via `VITE_AI_MODE=mock`
+4. **Local Logging**: Console warnings for fallback events (no external tracking)
+
+**Available Functions**:
+- `summarizeDocument(text, options)` — Summarize into 3-7 topics (with fallback)
+- `generateEmbedding(text, options)` — Generate Float32Array embedding (deterministic mock)
+- `batchGenerateEmbeddings(texts, options)` — Batch embedding generation (with fallback)
+- `expandNode(nodeText, options)` — Generate 2-4 child nodes (with fallback)
+- `rewriteText(text, options)` — Rewrite with tone adjustment (with fallback)
+
+**Example Usage**:
+```javascript
+import { generateEmbedding } from './ai/chromeAI.js';
+
+// Automatic timeout and fallback
+const embedding = await generateEmbedding('machine learning', {
+  timeoutMs: 10000, // Override default timeout
+  dims: 512
+});
+
+// Force mock mode (for testing)
+const mockEmbedding = await generateEmbedding('test', { mock: true });
+
+// Embedding is ALWAYS returned (never throws, never hangs)
+console.log(embedding.length); // 512
+```
+
+### Deterministic Mock Fallbacks
+
+When Chrome Built-in AI is unavailable or times out, FractaMind uses deterministic mocks from **[src/ai/mockHelpers.js](../src/ai/mockHelpers.js)**:
+
+- **Embeddings**: SHA-256 hash of text → normalized 512-dim vector (same input = same output)
+- **Summaries**: Sentence chunking → topic extraction (reproducible structure)
+- **Expansions**: Word chunking → child node generation (deterministic titles)
+- **Rewrites**: Tone-based transformations (concise/technical/creative)
+
+**Why Deterministic?**
+- Enables reliable unit testing (no randomness)
+- Same document → same fractal structure
+- Reproducible search results for demos
+
+### UI Error Handling
+
+The **[OnboardPopover](../src/components/OnboardPopover/OnboardPopover.jsx)** component demonstrates robust error handling:
+
+**Timeout Detection**:
+- When AI times out, error message displays: "AI processing timed out. You can retry or continue with a demo summary."
+- Two action buttons appear:
+  - **Retry**: Attempts AI processing again
+  - **Continue with demo summary**: Uses mock fallback and continues workflow
+
+**Accessibility**:
+- Error messages use `aria-live="polite"` for screen reader announcements
+- All action buttons have descriptive `aria-label` attributes
+- Progress updates announced during processing
+
+**Example**:
+```jsx
+{error && (
+  <div className="onboard-error" role="alert" aria-live="polite">
+    <strong>Error:</strong> {error}
+    {aiTimedOut && (
+      <div className="onboard-error-actions">
+        <button onClick={handleRetry} aria-label="Retry AI processing">
+          Retry
+        </button>
+        <button onClick={handleUseDemoSummary} aria-label="Continue with demo summary instead">
+          Continue with demo summary
+        </button>
+      </div>
+    )}
+  </div>
+)}
+```
+
+### Debugging Tips
+
+**If Chrome Built-in AI is not working**:
+
+1. **Check API Availability**:
+   ```javascript
+   console.log('window.ai:', window.ai);
+   console.log('Summarizer:', window.ai?.summarizer);
+   console.log('Embeddings:', window.ai?.embedding);
+   console.log('Writer:', window.ai?.writer);
+   ```
+
+2. **Force Mock Mode** (for development without AI):
+   - Set `VITE_AI_MODE=mock` in `.env`
+   - Restart dev server: `npm start`
+   - All AI operations will use deterministic fallbacks
+
+3. **Test Timeout Handling**:
+   - Set very low timeout: `VITE_AI_TIMEOUT_MS=100`
+   - Trigger import → should timeout and show Retry/Demo buttons
+   - Reset to default: `VITE_AI_TIMEOUT_MS=15000`
+
+4. **Check Console Warnings**:
+   ```
+   Chrome Embeddings API not available. Using deterministic mock.
+   AI fallback used { reason: 'Operation timed out', mode: 'live', timestamp: '...' }
+   ```
+
+5. **Enable Chrome Built-in AI** (Chrome Canary):
+   - Navigate to `chrome://flags/#optimization-guide-on-device-model`
+   - Enable "Prompt API for Gemini Nano"
+   - Restart Chrome Canary
+   - Verify: Open DevTools Console → Type `window.ai` → Should return object
+
+**If tests are failing**:
+
+1. **Run with mock mode**:
+   ```bash
+   VITE_AI_MODE=mock npm test
+   ```
+
+2. **Check specific test files**:
+   ```bash
+   # Test AI wrappers
+   npm test -- tests/ai/safeWrapper.test.js
+
+   # Test UI fallback behavior
+   npm test -- tests/ui/onboardFallback.test.jsx
+   ```
+
+3. **Verify mock determinism**:
+   ```bash
+   node -e "
+     const { mockEmbeddingFromText } = require('./src/ai/mockHelpers.js');
+     const e1 = mockEmbeddingFromText('test');
+     const e2 = mockEmbeddingFromText('test');
+     console.log('Deterministic:', JSON.stringify(e1) === JSON.stringify(e2));
+   "
+   ```
+
 ### Testing
 ```bash
 npm test                   # Run all tests

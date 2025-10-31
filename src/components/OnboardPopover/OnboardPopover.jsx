@@ -38,6 +38,10 @@ const OnboardPopover = ({
   const [showSeed, setShowSeed] = useState(false);
   const [progress, setProgress] = useState({ message: '', step: '' });
   const [error, setError] = useState(null);
+  const [aiTimedOut, setAiTimedOut] = useState(false);
+  // usedFallback tracks if user chose demo mode after timeout
+  // eslint-disable-next-line no-unused-vars
+  const [usedFallback, setUsedFallback] = useState(false);
 
   const textareaRef = useRef(null);
   const modalRef = useRef(null);
@@ -133,6 +137,44 @@ const OnboardPopover = ({
   };
 
   /**
+   * Handle retry after AI timeout
+   */
+  const handleRetry = async () => {
+    setError(null);
+    setAiTimedOut(false);
+    setUsedFallback(false);
+    // Trigger re-submission
+    const fakeEvent = { preventDefault: () => {} };
+    await handleSubmit(fakeEvent);
+  };
+
+  /**
+   * Handle continuing with demo/fallback summary
+   */
+  const handleUseDemoSummary = async () => {
+    setError(null);
+    setAiTimedOut(false);
+    setUsedFallback(true);
+    setIsSubmitting(true);
+
+    try {
+      // Force mock mode for demo
+      const result = await mockProcessing();
+      setProgress({ step: 'complete', message: strings.processing.success });
+      await sleep(800);
+
+      if (onSuccess) {
+        onSuccess(result);
+      }
+    } catch (err) {
+      console.error('Demo summary failed:', err);
+      setError('Demo summary failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /**
    * Handle form submission
    */
   const handleSubmit = async (e) => {
@@ -146,6 +188,7 @@ const OnboardPopover = ({
     setIsSubmitting(true);
     setError(null);
     setShowSeed(false);
+    setAiTimedOut(false);
 
     try {
       let result;
@@ -179,7 +222,22 @@ const OnboardPopover = ({
       }
     } catch (err) {
       console.error('Import failed:', err);
-      setError(err.message || strings.processing.error);
+
+      // Check if error is a timeout
+      if (err.message && err.message.toLowerCase().includes('timed out')) {
+        setAiTimedOut(true);
+        setError('AI processing timed out. You can retry or continue with a demo summary.');
+      } else {
+        setError(err.message || strings.processing.error);
+      }
+
+      // Log fallback event
+      console.warn('AI fallback used', {
+        reason: err.message,
+        mode: demoMode ? 'demo' : 'live',
+        timestamp: new Date().toISOString()
+      });
+
       setShowSeed(false);
     } finally {
       setIsSubmitting(false);
@@ -265,14 +323,36 @@ const OnboardPopover = ({
                   <FractalSeed size={120} color="#667eea" autoPlay={true} />
                 </div>
               )}
-              <p className="onboard-progress-message">{progress.message}</p>
+              <p className="onboard-progress-message">
+                {aiTimedOut ? 'AI timed out — Retry / Demo' : progress.message}
+              </p>
             </div>
           )}
 
           {/* Error message */}
           {error && (
-            <div className="onboard-error" role="alert">
+            <div className="onboard-error" role="alert" aria-live="polite">
               <strong>Error:</strong> {error}
+              {aiTimedOut && (
+                <div className="onboard-error-actions">
+                  <button
+                    type="button"
+                    className="onboard-button onboard-button-secondary"
+                    onClick={handleRetry}
+                    aria-label="Retry AI processing"
+                  >
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    className="onboard-button onboard-button-primary"
+                    onClick={handleUseDemoSummary}
+                    aria-label="Continue with demo summary instead"
+                  >
+                    Continue with demo summary
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
