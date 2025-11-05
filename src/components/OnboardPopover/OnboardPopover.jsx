@@ -47,6 +47,8 @@ const OnboardPopover = ({
   // usedFallback tracks if user chose demo mode after timeout
   // eslint-disable-next-line no-unused-vars
   const [usedFallback, setUsedFallback] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [ariaLiveMessage, setAriaLiveMessage] = useState('');
 
   const textareaRef = useRef(null);
   const modalRef = useRef(null);
@@ -69,18 +71,29 @@ const OnboardPopover = ({
   }, [isOpen]);
 
   /**
-   * Handle Escape key to close
+   * Handle Escape key to close and Ctrl+Enter to submit
    */
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleKeyDown = (e) => {
+      // Escape to close
       if (e.key === 'Escape' && isOpen && !isSubmitting) {
         onClose();
       }
+
+      // Ctrl+Enter (or Cmd+Enter on Mac) to submit
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && isOpen && !isSubmitting && text.trim()) {
+        e.preventDefault();
+        // Trigger form submission
+        const form = document.querySelector('.onboard-form');
+        if (form) {
+          form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, isSubmitting, onClose]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isSubmitting, onClose, text]);
 
   /**
    * Cleanup all timers on unmount
@@ -215,6 +228,9 @@ const OnboardPopover = ({
     setSecondsElapsed(0);
     isProcessingRef.current = true; // Mark as processing
 
+    // Announce to screen readers
+    setAriaLiveMessage(strings.onboard.progressAnnouncement);
+
     const traceId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
     console.info('[UI] submit -> import call', { traceId, mode: demoMode ? 'demo' : 'live' });
 
@@ -303,6 +319,7 @@ const OnboardPopover = ({
 
       // Success!
       setProgress({ step: 'complete', message: strings.processing.success });
+      setAriaLiveMessage(strings.onboard.successAnnouncement);
       await sleep(800);
 
       if (onSuccess) {
@@ -357,12 +374,22 @@ const OnboardPopover = ({
 
   return (
     <div
-      className="onboard-popover-backdrop"
+      className={`onboard-popover-backdrop ${isSubmitting ? 'onboard-backdrop-blurred' : ''}`}
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboard-title"
     >
+      {/* Aria-live region for screen reader announcements */}
+      <div
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {ariaLiveMessage}
+      </div>
+
       <div className="onboard-popover" ref={modalRef}>
         {/* Close button */}
         <button
@@ -386,38 +413,51 @@ const OnboardPopover = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="onboard-form">
-          {/* Textarea */}
-          <label htmlFor="onboard-textarea" className="onboard-label">
-            {strings.onboard.textareaLabel}
-          </label>
-          <textarea
-            id="onboard-textarea"
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="onboard-textarea"
-            placeholder={strings.onboard.textareaPlaceholder}
-            rows={10}
-            disabled={isSubmitting}
-            aria-required="true"
-            aria-describedby="onboard-hint"
-          />
+          {/* Textarea with floating label */}
+          <div className="onboard-input-wrapper">
+            <label
+              htmlFor="onboard-textarea"
+              className={`onboard-label ${(isFocused || text) ? 'onboard-label-floating' : ''}`}
+            >
+              {strings.onboard.textareaLabel}
+            </label>
+            <textarea
+              id="onboard-textarea"
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              className="onboard-textarea"
+              placeholder={isFocused ? strings.onboard.textareaPlaceholder : ''}
+              rows={10}
+              disabled={isSubmitting}
+              aria-required="true"
+              aria-describedby="onboard-hint onboard-helper onboard-keyboard-hint"
+            />
 
-          {/* TEST BANNER - REMOVE AFTER VERIFICATION */}
-          <div style={{
-            background: '#ff0000',
-            color: 'white',
-            padding: '8px',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            marginBottom: '12px',
-            borderRadius: '4px'
-          }}>
-            🔴 TIMEOUT FIX ACTIVE - Max 28s + Visual Timer 🔴
+            {/* Helper chips */}
+            {!text && !isSubmitting && (
+              <div className="onboard-helper-chips">
+                <span className="onboard-chip">Paste an article</span>
+                <span className="onboard-chip">URL</span>
+                <span className="onboard-chip">Notes</span>
+              </div>
+            )}
           </div>
 
+          {/* Helper hint */}
+          <p id="onboard-helper" className="onboard-hint">
+            {strings.onboard.helperHint}
+          </p>
+
+          {/* Keyboard hint */}
+          <p id="onboard-keyboard-hint" className="onboard-keyboard-hint">
+            <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to generate
+          </p>
+
           {/* Privacy hint */}
-          <p id="onboard-hint" className="onboard-hint">
+          <p id="onboard-hint" className="onboard-privacy-hint">
             {strings.onboard.privacyHint}
           </p>
 

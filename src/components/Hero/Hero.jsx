@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import FractalSeed from '../FractalSeed/FractalSeed';
+import SeedFractal from './SeedFractal';
 import OnboardPopover from '../OnboardPopover/OnboardPopover';
 import { strings } from '../../i18n/strings';
 import './Hero.css';
@@ -25,6 +26,13 @@ import './Hero.css';
 const Hero = ({ onStartImport, onDemoStart, demoMode = true }) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [seedKey, setSeedKey] = useState(0); // Key to restart animation
+  const [isLoaded, setIsLoaded] = useState(false); // For fade-in animation
+
+  // Trigger fade-in animation on mount
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoaded(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   /**
    * Handle primary CTA click - open onboarding popover
@@ -65,12 +73,14 @@ const Hero = ({ onStartImport, onDemoStart, demoMode = true }) => {
 
   return (
     <section
-      className="hero"
+      className={`hero ${isLoaded ? 'hero-loaded' : ''}`}
       role="banner"
       aria-labelledby="hero-title"
     >
-      {/* Background gradient */}
-      <div className="hero-background" aria-hidden="true" />
+      {/* Background gradient with animated fractal */}
+      <div className="hero-background" aria-hidden="true">
+        <SeedFractal opacity={0.12} />
+      </div>
 
       <div className="hero-container">
         {/* Content (left side) */}
