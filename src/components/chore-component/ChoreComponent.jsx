@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './ChoreComponent.css';
 
 /**
@@ -15,12 +15,29 @@ import './ChoreComponent.css';
  * @param {boolean} props.hasImportedProject - Whether a project has been imported (optional)
  */
 const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess, onOpenFractalView, hasImportedProject = false }) => {
+  // 🔴 TIMEOUT FIX LOADED
+  console.log('%c🔴 CHORE COMPONENT LOADED - TIMEOUT FIX v2.0', 'background: red; color: white; padding: 4px; font-weight: bold');
+
   const [isModalOpen, setIsModalOpen] = useState(autoShow);
   const [seedText, setSeedText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState({ step: '', progress: 0, message: '' });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const [forceMockMode, setForceMockMode] = useState(false);
+
+  const watchdogTimerRef = useRef(null);
+  const elapsedTimerRef = useRef(null);
+  const isProcessingRef = useRef(false);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    };
+  }, []);
 
   const handleOpen = () => {
     setIsModalOpen(true);
@@ -34,6 +51,13 @@ const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess, onOpenFract
     setError(null);
     setSuccess(false);
     setProgress({ step: '', progress: 0, message: '' });
+    setSecondsElapsed(0);
+    setForceMockMode(false);
+    isProcessingRef.current = false;
+    if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
+    if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    // Clear force mock mode flag
+    sessionStorage.removeItem('FORCE_MOCK_MODE');
   };
 
   const handleSubmit = async (e) => {
@@ -46,12 +70,62 @@ const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess, onOpenFract
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
+    setSecondsElapsed(0);
+    isProcessingRef.current = true;
+
+    const traceId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+
+    // Check if mock mode is forced (set by recovery button)
+    const isForcedMock = sessionStorage.getItem('FORCE_MOCK_MODE') === 'true';
+    console.log('🔴 [CHORE] Starting import with timeout protection', { traceId, forceMockMode, isForcedMock });
+
+    // Start elapsed timer (visual feedback)
+    elapsedTimerRef.current = setInterval(() => {
+      setSecondsElapsed(prev => prev + 1);
+    }, 1000);
+
+    // Watchdog timer (emergency fallback - reads from environment)
+    // CORRECTED: Use VITE_AI_TIMEOUT_MS from .env (default 120s for debugging)
+    const watchdogTimeoutMs = Number(import.meta.env.VITE_AI_TIMEOUT_MS || 120000);
+    watchdogTimerRef.current = setTimeout(() => {
+      if (isProcessingRef.current) {
+        console.error(`🔴 [CHORE] EMERGENCY WATCHDOG FIRED at ${watchdogTimeoutMs}ms`, { traceId });
+        isProcessingRef.current = false;
+        setIsSubmitting(false);
+        setError(`Processing took too long (${watchdogTimeoutMs/1000}s). Please try again or use a shorter text.`);
+        if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+      }
+    }, watchdogTimeoutMs);
 
     try {
-      // Call onSeedSubmit with progress callback
-      const result = await onSeedSubmit(seedText.trim(), (progressData) => {
+      // Promise.race timeout (slightly less than watchdog to fire first)
+      // CORRECTED: Use VITE_AI_TIMEOUT_MS - 2s buffer
+      const raceTimeoutMs = watchdogTimeoutMs - 2000;
+      const importPromise = onSeedSubmit(seedText.trim(), (progressData) => {
         setProgress(progressData);
       });
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          console.error(`🔴 [CHORE] Promise.race timeout at ${raceTimeoutMs}ms`, { traceId });
+          reject(new Error(`Operation timed out after ${raceTimeoutMs/1000} seconds`));
+        }, raceTimeoutMs);
+      });
+
+      console.log(`🔴 [CHORE] Racing import vs ${raceTimeoutMs}ms timeout`, { traceId });
+      const result = await Promise.race([importPromise, timeoutPromise]);
+
+      console.log('🔴 [CHORE] Import succeeded', { traceId });
+      isProcessingRef.current = false;
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+
+      // Clear force mock mode flag on success (to avoid affecting next import)
+      if (sessionStorage.getItem('FORCE_MOCK_MODE') === 'true') {
+        console.log('🔴 [CHORE] Clearing mock mode flag after success');
+        sessionStorage.removeItem('FORCE_MOCK_MODE');
+      }
+      setForceMockMode(false);
 
       setSuccess(true);
       setProgress({ step: 'complete', progress: 1.0, message: 'Import complete!' });
@@ -66,7 +140,11 @@ const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess, onOpenFract
       //   handleClose();
       // }, 1500);
     } catch (err) {
-      console.error('Error submitting seed text:', err);
+      console.error('🔴 [CHORE] Import failed', { traceId, error: err.message });
+      isProcessingRef.current = false;
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+
       setError(err.message || 'Import failed. Please try again.');
       setProgress({ step: 'error', progress: 0, message: '' });
     } finally {
@@ -168,7 +246,13 @@ Examples:
                 </div>
               )}
 
-              {/* Warning indicator (AI fallback mode) */}
+              {/* AI status indicators */}
+              {progress.step === 'ai-ready' && (
+                <div className="chore-alert chore-alert-success">
+                  {progress.message}
+                </div>
+              )}
+
               {progress.step === 'warning' && (
                 <div className="chore-alert chore-alert-warning">
                   <strong>Note:</strong> {progress.message}
@@ -204,10 +288,90 @@ Examples:
                 </div>
               )}
 
-              {/* Error message */}
+              {/* Error message with recovery options */}
               {error && (
                 <div className="chore-alert chore-alert-error">
                   <strong>Error:</strong> {error}
+
+                  {error.includes('timed out') && (
+                    <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={async (e) => {
+                          try {
+                            console.log('🟡 [BUTTON] Mock Mode button clicked!');
+                            e.stopPropagation();
+
+                            // Set sessionStorage flag IMMEDIATELY
+                            sessionStorage.setItem('FORCE_MOCK_MODE', 'true');
+                            console.log('🟡 [BUTTON] sessionStorage set to:', sessionStorage.getItem('FORCE_MOCK_MODE'));
+
+                            setForceMockMode(true);
+                            console.log('🟡 [BUTTON] React state setForceMockMode(true) called');
+
+                            // Clear error and trigger import
+                            setError(null);
+                            console.log('🟡 [BUTTON] Error cleared, calling handleSubmit in 50ms...');
+
+                            setTimeout(async () => {
+                              try {
+                                console.log('🟡 [BUTTON] Timeout fired, executing handleSubmit');
+
+                                if (!seedText.trim()) {
+                                  console.error('🔴 [BUTTON] ERROR: No text to submit!');
+                                  return;
+                                }
+
+                                console.log('🟡 [BUTTON] seedText exists, length:', seedText.length);
+
+                                // Create fake event
+                                const fakeEvent = { preventDefault: () => {} };
+                                console.log('🟡 [BUTTON] Calling handleSubmit now...');
+
+                                await handleSubmit(fakeEvent);
+
+                                console.log('🟡 [BUTTON] handleSubmit completed');
+                              } catch (err) {
+                                console.error('🔴 [BUTTON] ERROR in setTimeout:', err);
+                              }
+                            }, 50);
+                          } catch (err) {
+                            console.error('🔴 [BUTTON] ERROR in onClick:', err);
+                          }
+                        }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          background: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Use Mock Mode (Fast)
+                      </button>
+                      <button
+                        onClick={() => {
+                          setError(null);
+                          setForceMockMode(false);
+                          console.log('🔴 User requested retry with live AI');
+                        }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          background: '#667eea',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Retry with AI
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -226,7 +390,7 @@ Examples:
                   disabled={!seedText.trim() || isSubmitting}
                   aria-label="Submit text to generate fractal"
                 >
-                  {isSubmitting ? progress.message || 'Processing...' : 'Generate Fractal'}
+                  {isSubmitting ? `Processing... (${secondsElapsed}s)` : 'Generate Fractal'}
                 </button>
               </div>
             </form>

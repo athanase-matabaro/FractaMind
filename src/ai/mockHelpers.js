@@ -7,11 +7,26 @@
  * All mocks are deterministic (same input → same output) for testing reliability
  */
 
-import crypto from 'crypto';
+/**
+ * Simple deterministic hash function (browser-compatible, no crypto needed)
+ * Uses string char codes to generate reproducible numbers
+ *
+ * @param {string} str - String to hash
+ * @returns {number} Hash value
+ */
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
 
 /**
  * Generate deterministic mock embedding from text
- * Uses SHA-256 hash of text + seed to create reproducible embeddings
+ * Uses simple hashing instead of crypto for browser compatibility
  *
  * @param {string} text - Input text to embed
  * @param {number} dims - Embedding dimensions (default: 512)
@@ -19,31 +34,30 @@ import crypto from 'crypto';
  * @returns {Float32Array} Deterministic embedding vector
  */
 export function mockEmbeddingFromText(text, dims = 512, seed = 'mock') {
-  // Create hash from text + seed
-  const hash = crypto
-    .createHash('sha256')
-    .update(text + seed)
-    .digest();
+  // Create deterministic hash from text + seed
+  const baseHash = simpleHash(text + seed);
 
   const embedding = new Float32Array(dims);
 
-  // Fill embedding using hash bytes (repeat hash if needed)
+  // Fill embedding using deterministic pseudo-random values
   for (let i = 0; i < dims; i++) {
-    const hashIndex = i % hash.length;
-    const byteValue = hash[hashIndex];
+    // Generate deterministic value for this dimension
+    const dimHash = simpleHash(`${baseHash}-${i}-${seed}`);
 
     // Normalize to [-1, 1] range
-    embedding[i] = (byteValue / 255) * 2 - 1;
+    embedding[i] = (dimHash % 10000) / 10000 * 2 - 1;
 
-    // Add variation using sine waves based on position and hash
-    const phase = (hash[(i * 7) % hash.length] / 255) * Math.PI * 2;
+    // Add variation using sine waves for smoothness
+    const phase = (dimHash % 1000) / 1000 * Math.PI * 2;
     embedding[i] += Math.sin(i * 0.1 + phase) * 0.1;
   }
 
   // Normalize the vector (unit length)
   const norm = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-  for (let i = 0; i < dims; i++) {
-    embedding[i] /= norm;
+  if (norm > 0) {
+    for (let i = 0; i < dims; i++) {
+      embedding[i] /= norm;
+    }
   }
 
   return embedding;

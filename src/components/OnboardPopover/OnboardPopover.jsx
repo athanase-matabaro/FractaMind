@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import ToneSelector from '../ToneSelector/ToneSelector';
 import ExamplesCarousel from '../ExamplesCarousel/ExamplesCarousel';
 import FractalSeed from '../FractalSeed/FractalSeed';
+// FORCE RELOAD - Timeout Fix v2.0 Active
 import { strings } from '../../i18n/strings';
 import './OnboardPopover.css';
 
@@ -32,6 +33,10 @@ const OnboardPopover = ({
   demoMode = true,
   onImport,
 }) => {
+  // VERIFICATION: Log when component loads with new code
+  console.log('%c🔴 ONBOARD POPOVER LOADED - TIMEOUT FIX VERSION 2.0', 'background: red; color: white; padding: 4px; font-weight: bold');
+  console.log('Features: Promise.race (28s) + Watchdog (30s) + DOM fallback + Visual timer');
+
   const [text, setText] = useState('');
   const [selectedTone, setSelectedTone] = useState('concise');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,6 +51,9 @@ const OnboardPopover = ({
   const textareaRef = useRef(null);
   const modalRef = useRef(null);
   const watchdogTimerRef = useRef(null);
+  const isProcessingRef = useRef(false); // Track if we're still processing
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const elapsedTimerRef = useRef(null);
 
   /**
    * Focus textarea when popover opens
@@ -75,12 +83,15 @@ const OnboardPopover = ({
   }, [isOpen, isSubmitting, onClose]);
 
   /**
-   * Cleanup watchdog timer on unmount
+   * Cleanup all timers on unmount
    */
   useEffect(() => {
     return () => {
       if (watchdogTimerRef.current) {
         clearTimeout(watchdogTimerRef.current);
+      }
+      if (elapsedTimerRef.current) {
+        clearInterval(elapsedTimerRef.current);
       }
     };
   }, []);
@@ -201,18 +212,44 @@ const OnboardPopover = ({
     setError(null);
     setShowSeed(false);
     setAiTimedOut(false);
+    setSecondsElapsed(0);
+    isProcessingRef.current = true; // Mark as processing
 
     const traceId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
     console.info('[UI] submit -> import call', { traceId, mode: demoMode ? 'demo' : 'live' });
 
+    // Start elapsed time counter (visual feedback for user)
+    elapsedTimerRef.current = setInterval(() => {
+      setSecondsElapsed(prev => prev + 1);
+    }, 1000);
+
     // UI Watchdog: Maximum 30 seconds for entire operation
+    // This is a LAST RESORT fallback if Promise.race somehow doesn't work
+    console.log('[UI] Setting watchdog timer for 30s', { traceId });
     watchdogTimerRef.current = setTimeout(() => {
-      if (isSubmitting) {
-        console.warn('[UI] processing watchdog fired', { traceId, maxMs: 30000 });
+      console.log('[UI] Watchdog timer fired!', { traceId, isStillProcessing: isProcessingRef.current });
+      if (isProcessingRef.current) {
+        console.error('[UI] EMERGENCY WATCHDOG ACTIVATED - forcing stop', { traceId, maxMs: 30000 });
+        isProcessingRef.current = false;
         setIsSubmitting(false);
         setAiTimedOut(true);
         setError('Processing took too long. You can retry or continue with a demo summary.');
         setShowSeed(false);
+
+        // NUCLEAR OPTION: Force update the button text directly in DOM
+        // This bypasses React state entirely in case setState is failing
+        try {
+          const submitButton = document.querySelector('button[type="submit"]');
+          if (submitButton && submitButton.textContent === 'Processing...') {
+            submitButton.textContent = 'Retry';
+            submitButton.disabled = false;
+            console.log('[UI] Forcibly updated button via DOM manipulation');
+          }
+        } catch (domError) {
+          console.error('[UI] Failed to manipulate DOM:', domError);
+        }
+      } else {
+        console.log('[UI] Watchdog fired but processing already complete');
       }
     }, 30000);
 
@@ -228,7 +265,9 @@ const OnboardPopover = ({
           throw new Error('Import function not provided');
         }
 
-        result = await onImport(text, {
+        // CRITICAL: Wrap import with Promise.race for hard timeout enforcement
+        // This ensures we NEVER wait indefinitely for a hung import operation
+        const importPromise = onImport(text, {
           tone: selectedTone,
           onProgress: (progressData) => {
             setProgress(progressData);
@@ -237,14 +276,29 @@ const OnboardPopover = ({
             }
           },
         });
+
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            console.error('[UI] Import Promise.race timeout fired at 28s');
+            reject(new Error('Import operation timed out after 28 seconds'));
+          }, 28000); // Fire at 28s, before UI watchdog at 30s
+        });
+
+        console.log('[UI] Racing import promise against 28s timeout');
+        result = await Promise.race([importPromise, timeoutPromise]);
       }
 
       console.info('[UI] import returned', { traceId, ok: !!result });
 
-      // Clear watchdog on success
+      // Clear all timers on success
+      isProcessingRef.current = false;
       if (watchdogTimerRef.current) {
         clearTimeout(watchdogTimerRef.current);
         watchdogTimerRef.current = null;
+      }
+      if (elapsedTimerRef.current) {
+        clearInterval(elapsedTimerRef.current);
+        elapsedTimerRef.current = null;
       }
 
       // Success!
@@ -258,10 +312,15 @@ const OnboardPopover = ({
       console.error('Import failed:', err);
       console.warn('[UI] import fallback', { traceId, error: err.message });
 
-      // Clear watchdog on error
+      // Clear all timers on error
+      isProcessingRef.current = false;
       if (watchdogTimerRef.current) {
         clearTimeout(watchdogTimerRef.current);
         watchdogTimerRef.current = null;
+      }
+      if (elapsedTimerRef.current) {
+        clearInterval(elapsedTimerRef.current);
+        elapsedTimerRef.current = null;
       }
 
       // Check if error is a timeout
@@ -344,6 +403,19 @@ const OnboardPopover = ({
             aria-describedby="onboard-hint"
           />
 
+          {/* TEST BANNER - REMOVE AFTER VERIFICATION */}
+          <div style={{
+            background: '#ff0000',
+            color: 'white',
+            padding: '8px',
+            fontWeight: 'bold',
+            textAlign: 'center',
+            marginBottom: '12px',
+            borderRadius: '4px'
+          }}>
+            🔴 TIMEOUT FIX ACTIVE - Max 28s + Visual Timer 🔴
+          </div>
+
           {/* Privacy hint */}
           <p id="onboard-hint" className="onboard-hint">
             {strings.onboard.privacyHint}
@@ -413,7 +485,7 @@ const OnboardPopover = ({
               disabled={!text.trim() || isSubmitting}
             >
               {isSubmitting
-                ? strings.onboard.submittingButton
+                ? `${strings.onboard.submittingButton} (${secondsElapsed}s)`
                 : strings.onboard.submitButton}
             </button>
           </div>

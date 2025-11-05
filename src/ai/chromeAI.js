@@ -18,6 +18,9 @@
 
 import * as mockHelpers from './mockHelpers.js';
 
+// MODULE LOAD VERIFICATION
+console.log('%c🚀 chromeAI.js MODULE LOADED - v3.1 with download progress monitoring', 'background: blue; color: white; padding: 4px; font-weight: bold');
+
 // Configuration from environment variables
 // Support both Vite (import.meta.env) and Jest (process.env)
 function getEnvVar(name, defaultValue = '') {
@@ -38,7 +41,10 @@ function getEnvVar(name, defaultValue = '') {
   return defaultValue;
 }
 
-const DEFAULT_TIMEOUT_MS = Number(getEnvVar('VITE_AI_TIMEOUT_MS', '15000'));
+// UPDATED: Extended default timeout to 120s for debugging live AI mode
+// Task requirement: 120s timeout for model warm-up and debugging
+// Reference: TASK hotfix/audit-reorg-finalize-ai - PHASE C
+const DEFAULT_TIMEOUT_MS = Number(getEnvVar('VITE_AI_TIMEOUT_MS', '120000')); // 120s default
 const AI_MODE = getEnvVar('VITE_AI_MODE', 'live');
 
 /**
@@ -68,17 +74,27 @@ export function isMockMode() {
 }
 
 /**
- * Check if Chrome Built-in AI APIs are available
+ * Check if Chrome Built-in AI API constructors are present
+ * NOTE: This only checks if APIs exist, not if models are ready.
+ * Use ensureModelReady() to check actual model availability.
+ *
+ * CORRECTED: Uses global constructors (LanguageModel, Writer, Summarizer)
+ * instead of window.ai.* namespace which doesn't exist in Chrome's API
  */
 export function checkAIAvailability() {
-  // Check if window exists (browser environment)
-  const hasWindow = typeof window !== 'undefined';
+  // Check if self exists (browser environment)
+  const hasSelf = typeof self !== 'undefined';
 
   const available = {
-    summarizer: hasWindow && 'ai' in window && 'summarizer' in window.ai,
-    embeddings: hasWindow && 'ai' in window && 'embedding' in window.ai,
-    writer: hasWindow && 'ai' in window && 'writer' in window.ai,
-    prompt: hasWindow && 'ai' in window && 'languageModel' in window.ai,
+    // Summarizer API: Check for global Summarizer constructor
+    summarizer: hasSelf && 'Summarizer' in self,
+    // Embeddings API: Not available in current Chrome built-in AI
+    // Always use mock embeddings for now
+    embeddings: false,
+    // Writer API: Check for global Writer constructor
+    writer: hasSelf && 'Writer' in self,
+    // Prompt API: Check for global LanguageModel constructor
+    prompt: hasSelf && 'LanguageModel' in self,
   };
 
   const allAvailable = Object.values(available).every(Boolean);
@@ -90,6 +106,54 @@ export function checkAIAvailability() {
       .filter(([, isAvail]) => !isAvail)
       .map(([api]) => api),
   };
+}
+
+/**
+ * Ensure AI model is ready for use
+ *
+ * Pattern from web-ai-demos: Always check availability() before create()
+ * Reference: web-ai-demos/news-app/script.js:42-49
+ *
+ * @param {string} apiName - 'LanguageModel', 'Writer', or 'Summarizer'
+ * @param {Object} options - Options for availability check
+ * @param {Function} options.onDownloadProgress - Callback for download progress
+ * @returns {Promise<string>} Availability status: 'available' | 'downloadable' | 'unavailable'
+ * @throws {Error} If model is unavailable
+ */
+export async function ensureModelReady(apiName, options = {}) {
+  const { onDownloadProgress } = options;
+
+  // Check if API constructor exists
+  if (typeof self === 'undefined' || !(apiName in self)) {
+    throw new Error(`${apiName} API not found in browser`);
+  }
+
+  try {
+    // Call availability() method on the API constructor
+    // Reference: web-ai-demos/summarization-api-playground/src/main.ts:62-64
+    console.log(`[AI] Calling ${apiName}.availability()...`);
+    const availability = await self[apiName].availability();
+
+    console.log(`[AI] ✅ ${apiName}.availability() returned: "${availability}"`);
+
+    if (availability === 'unavailable') {
+      console.error(`[AI] ❌ ${apiName} model is unavailable on this device`);
+      throw new Error(`${apiName} model unavailable on this device`);
+    }
+
+    if (availability === 'available') {
+      console.log(`[AI] ✅ ${apiName} model is ready (already downloaded)`);
+    } else if (availability === 'downloadable') {
+      console.warn(`[AI] ⚠️ ${apiName} model needs to be downloaded. create() will trigger download (30-90s).`);
+    }
+
+    // 'available' or 'downloadable' are both OK
+    // If 'downloadable', the create() call will trigger download
+    return availability;
+  } catch (error) {
+    console.error(`[AI] ❌ ${apiName}.availability() failed:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -158,9 +222,22 @@ export async function summarizeDocument(text, options = {}) {
     timeoutMs = DEFAULT_TIMEOUT_MS
   } = options;
 
+  // Check if user explicitly requested mock mode (from timeout recovery)
+  const sessionStorageAvailable = typeof sessionStorage !== 'undefined';
+  const sessionStorageValue = sessionStorageAvailable ? sessionStorage.getItem('FORCE_MOCK_MODE') : null;
+  const forceMockMode = sessionStorageAvailable && sessionStorageValue === 'true';
+
+  console.log('🔍 [AI] summarizeDocument called', {
+    sessionStorageAvailable,
+    sessionStorageValue,
+    forceMockMode,
+    mock,
+    isMockMode: isMockMode()
+  });
+
   // Force mock if requested or global mock mode enabled
-  if (mock || isMockMode()) {
-    console.log('Using mock summarization (mode: mock)');
+  if (mock || isMockMode() || forceMockMode) {
+    console.log(forceMockMode ? 'Using mock summarization (FORCED by user)' : 'Using mock summarization (mode: mock)');
     return await mockHelpers.mockSummarize(text, { maxTopics });
   }
 
@@ -175,9 +252,35 @@ export async function summarizeDocument(text, options = {}) {
   // Use Prompt API for structured JSON output (more reliable than Summarizer for JSON)
   if (availability.available.prompt) {
     try {
-      const sessionPromise = window.ai.languageModel.create({
-        systemPrompt: `You are a concise document summarizer. Return ONLY valid JSON with no markdown, no explanations.`,
-      });
+      // PHASE 3 FIX: Check model availability before creating session
+      // Pattern verified from web-ai-demos: always check availability() before create()
+      console.log('[AI] Checking LanguageModel availability before creating session...');
+      const modelAvailability = await ensureModelReady('LanguageModel');
+
+      // Check if model needs download (pattern from web-ai-demos/news-app/script.js:371)
+      const needsDownload = modelAvailability === 'downloadable';
+      if (needsDownload) {
+        console.warn('[AI] ⏳ Model needs download. Session creation will trigger download (may take 30-90s)...');
+      }
+
+      // CRITICAL FIX: Add monitor callback for download progress
+      // Pattern from web-ai-demos/news-app/script.js:375-385
+      const createOptions = {
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            const percent = e.total ? Math.round((e.loaded / e.total) * 100) : e.loaded;
+            console.log(`[AI] 📥 Downloading model: ${percent}${e.total ? '%' : ''} (${e.loaded}${e.total ? '/' + e.total : ''} bytes)`);
+          });
+        },
+        initialPrompts: [{
+          role: 'system',
+          content: `You are a concise document summarizer. Return ONLY valid JSON with no markdown, no explanations.`
+        }]
+      };
+
+      // Use LanguageModel directly (pattern from web-ai-demos)
+      console.log('[AI] Creating LanguageModel session...');
+      const sessionPromise = LanguageModel.create(createOptions);
       const session = await timeout(sessionPromise, timeoutMs, 'Summarization session creation timed out');
 
       const prompt = `Summarize the following document into ${maxTopics} distinct subtopics. For each subtopic return:
@@ -196,11 +299,18 @@ JSON output:`;
       const responsePromise = session.prompt(prompt);
       const response = await timeout(responsePromise, timeoutMs, 'Summarization prompt timed out');
 
+      console.log('[AI] Prompt API response received, parsing JSON...');
       const parsed = parseAIJSON(response);
 
       // Validate response structure
       if (!Array.isArray(parsed)) {
+        console.warn('[AI] Response is not an array, falling back to mock');
         throw new Error('AI response is not an array');
+      }
+
+      if (parsed.length === 0) {
+        console.warn('[AI] Empty array response, falling back to mock');
+        throw new Error('AI returned empty array');
       }
 
       // Transform to match mockHelpers output format (summary + topics)
@@ -208,25 +318,29 @@ JSON output:`;
         id: `ai-topic-${idx}`,
         title: item.title || `Topic ${idx + 1}`,
         summary: item.summary || '',
-        text: item.summary || '',
+        text: item.text || item.summary || '',
         keyPoints: Array.isArray(item.keyPoints) ? item.keyPoints : [],
       }));
 
+      console.log(`[AI] Successfully summarized into ${validated.length} topics (live mode)`);
       return {
         summary: validated[0]?.summary || 'Document summary',
         topics: validated.slice(0, maxTopics)
       };
     } catch (error) {
-      console.error('Prompt API summarization failed:', error);
+      console.error('[AI] Prompt API summarization failed, using mock fallback:', error.message);
       // Fall back to mock on error
-      return await mockHelpers.mockSummarize(text, { maxTopics });
+      const mockResult = await mockHelpers.mockSummarize(text, { maxTopics });
+      console.log(`[AI] Mock fallback generated ${mockResult.topics.length} topics`);
+      return mockResult;
     }
   }
 
   // Fallback: Use Summarizer API (less structured output)
   if (availability.available.summarizer) {
     try {
-      const summarizer = await window.ai.summarizer.create({
+      // CORRECTED: Use global Summarizer constructor
+      const summarizer = await self.Summarizer.create({
         type: 'key-points',
         format: 'markdown',
         length: 'medium',
@@ -313,41 +427,31 @@ export async function generateEmbedding(text, options = {}) {
     timeoutMs = DEFAULT_TIMEOUT_MS
   } = options;
 
+  // Check if user explicitly requested mock mode (from timeout recovery)
+  const sessionStorageAvailable = typeof sessionStorage !== 'undefined';
+  const sessionStorageValue = sessionStorageAvailable ? sessionStorage.getItem('FORCE_MOCK_MODE') : null;
+  const forceMockMode = sessionStorageAvailable && sessionStorageValue === 'true';
+
+  console.log('🔍 [AI] generateEmbedding called', {
+    sessionStorageAvailable,
+    sessionStorageValue,
+    forceMockMode,
+    mock
+  });
+
   // Force mock if requested or global mock mode enabled
-  if (mock || isMockMode()) {
-    console.log('Using mock embedding (mode: mock)');
+  if (mock || isMockMode() || forceMockMode) {
+    console.log(forceMockMode ? 'Using mock embedding (FORCED by user)' : 'Using mock embedding (mode: mock)');
     return mockHelpers.mockEmbeddingFromText(text, dims);
   }
 
-  const availability = checkAIAvailability();
+  // CORRECTED: Embeddings API is not available in Chrome Built-in AI
+  // The Chrome AI APIs (as of current version) don't include a native embeddings API
+  // Always use deterministic mock embeddings for now
+  // Future: May need to use external embeddings service or wait for Chrome to add this API
 
-  if (!availability.available.embeddings) {
-    // Fallback for development
-    console.warn('Chrome Embeddings API not available. Using deterministic mock.');
-    return mockHelpers.mockEmbeddingFromText(text, dims);
-  }
-
-  try {
-    const embedderPromise = window.ai.embedding.create();
-    const embedder = await timeout(embedderPromise, timeoutMs, 'Embedding creation timed out');
-
-    const embedPromise = embedder.embed(text.slice(0, 2000)); // Limit to ~2000 chars
-    const result = await timeout(embedPromise, timeoutMs, 'Embedding generation timed out');
-
-    // Convert to Float32Array if not already
-    if (result instanceof Float32Array) {
-      return result;
-    }
-
-    if (Array.isArray(result)) {
-      return new Float32Array(result);
-    }
-
-    throw new Error('Unexpected embedding result format');
-  } catch (error) {
-    console.error('Embedding generation failed:', error);
-    return mockHelpers.mockEmbeddingFromText(text, dims);
-  }
+  console.log('[AI] Using mock embeddings (Chrome Embeddings API not yet available)');
+  return mockHelpers.mockEmbeddingFromText(text, dims);
 }
 
 // Removed createMockEmbedding - use mockHelpers.mockEmbeddingFromText instead
@@ -372,9 +476,12 @@ export async function expandNode(nodeText, options = {}) {
     timeoutMs = DEFAULT_TIMEOUT_MS
   } = options;
 
+  // Check if user explicitly requested mock mode (from timeout recovery)
+  const forceMockMode = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('FORCE_MOCK_MODE') === 'true';
+
   // Force mock if requested or global mock mode enabled
-  if (mock || isMockMode()) {
-    console.log('Using mock node expansion (mode: mock)');
+  if (mock || isMockMode() || forceMockMode) {
+    console.log(forceMockMode ? 'Using mock node expansion (FORCED by user)' : 'Using mock node expansion (mode: mock)');
     return await mockHelpers.mockExpandNode(nodeText, { title, numChildren });
   }
 
@@ -388,9 +495,31 @@ export async function expandNode(nodeText, options = {}) {
   // Use Prompt API for structured output
   if (availability.available.prompt) {
     try {
-      const sessionPromise = window.ai.languageModel.create({
-        systemPrompt: 'You are an idea-expander. Output ONLY valid JSON with no markdown.',
-      });
+      // PHASE 3 FIX: Check model availability before creating session
+      console.log('[AI] Checking LanguageModel availability before node expansion...');
+      const modelAvailability = await ensureModelReady('LanguageModel');
+
+      const needsDownload = modelAvailability === 'downloadable';
+      if (needsDownload) {
+        console.warn('[AI] ⏳ Model needs download for node expansion (may take 30-90s)...');
+      }
+
+      // CRITICAL FIX: Add monitor callback for download progress
+      const createOptions = {
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            const percent = e.total ? Math.round((e.loaded / e.total) * 100) : e.loaded;
+            console.log(`[AI] 📥 Downloading model for expansion: ${percent}${e.total ? '%' : ''}`);
+          });
+        },
+        initialPrompts: [{
+          role: 'system',
+          content: 'You are an idea-expander. Output ONLY valid JSON with no markdown.'
+        }]
+      };
+
+      console.log('[AI] Creating LanguageModel session for node expansion...');
+      const sessionPromise = LanguageModel.create(createOptions);
       const session = await timeout(sessionPromise, timeoutMs, 'Node expansion session creation timed out');
 
       const prompt = `Given this node, generate ${numChildren} child nodes that expand it. For each child return:
@@ -408,10 +537,17 @@ JSON output:`;
       const responsePromise = session.prompt(prompt);
       const response = await timeout(responsePromise, timeoutMs, 'Node expansion prompt timed out');
 
+      console.log('[AI] Node expansion response received, parsing JSON...');
       const parsed = parseAIJSON(response);
 
       if (!Array.isArray(parsed)) {
+        console.warn('[AI] Expansion response not array, falling back to mock');
         throw new Error('AI response is not an array');
+      }
+
+      if (parsed.length === 0) {
+        console.warn('[AI] Empty expansion array, falling back to mock');
+        throw new Error('AI returned empty array');
       }
 
       const validated = parsed.map((item, idx) => ({
@@ -419,17 +555,21 @@ JSON output:`;
         text: item.text || '',
       }));
 
+      console.log(`[AI] Successfully expanded into ${validated.length} child nodes (live mode)`);
       return validated.slice(0, numChildren);
     } catch (error) {
-      console.error('Node expansion failed:', error);
-      return await mockHelpers.mockExpandNode(nodeText, { title, numChildren });
+      console.error('[AI] Node expansion failed, using mock fallback:', error.message);
+      const mockResult = await mockHelpers.mockExpandNode(nodeText, { title, numChildren });
+      console.log(`[AI] Mock expansion generated ${mockResult.length} children`);
+      return mockResult;
     }
   }
 
   // Fallback: Use Writer API
   if (availability.available.writer) {
     try {
-      const writer = await window.ai.writer.create({
+      // CORRECTED: Use global Writer constructor
+      const writer = await self.Writer.create({
         tone: 'neutral',
         format: 'markdown',
         length: 'short',
@@ -547,9 +687,31 @@ export async function rewriteText(text, options = {}) {
   // Use Prompt API for more control over rewriting
   if (availability.available.prompt) {
     try {
-      const sessionPromise = window.ai.languageModel.create({
-        systemPrompt: `You are a professional text rewriter. Maintain the core meaning while adjusting ${tone} tone and ${length} length.`,
-      });
+      // PHASE 3 FIX: Check model availability before creating session
+      console.log('[AI] Checking LanguageModel availability before rewriting...');
+      const modelAvailability = await ensureModelReady('LanguageModel');
+
+      const needsDownload = modelAvailability === 'downloadable';
+      if (needsDownload) {
+        console.warn('[AI] ⏳ Model needs download for rewriting (may take 30-90s)...');
+      }
+
+      // CRITICAL FIX: Add monitor callback for download progress
+      const createOptions = {
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            const percent = e.total ? Math.round((e.loaded / e.total) * 100) : e.loaded;
+            console.log(`[AI] 📥 Downloading model for rewriting: ${percent}${e.total ? '%' : ''}`);
+          });
+        },
+        initialPrompts: [{
+          role: 'system',
+          content: `You are a professional text rewriter. Maintain the core meaning while adjusting ${tone} tone and ${length} length.`
+        }]
+      };
+
+      console.log('[AI] Creating LanguageModel session for rewriting...');
+      const sessionPromise = LanguageModel.create(createOptions);
       const session = await timeout(sessionPromise, timeoutMs, 'Rewrite session creation timed out');
 
       const prompt = instruction
@@ -582,7 +744,8 @@ export async function rewriteText(text, options = {}) {
         casual: 'casual',
       };
 
-      const writerPromise = window.ai.writer.create({
+      // CORRECTED: Use global Writer constructor
+      const writerPromise = self.Writer.create({
         tone: toneMap[tone] || 'neutral',
         format: 'plain-text',
         length: length,
