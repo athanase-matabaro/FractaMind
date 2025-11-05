@@ -109,6 +109,23 @@
   --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
+  /* Enhanced Animation Design Tokens */
+  --twilight-1: #667eea;
+  --twilight-2: #764ba2;
+  --bg-radial: radial-gradient(1200px 600px at 20% 10%, rgba(255,255,255,0.02), transparent 12%),
+    linear-gradient(180deg, var(--twilight-1), var(--twilight-2));
+  --glass-bg: rgba(255,255,255,0.04);
+  --card-bg: rgba(255,255,255,0.06);
+  --accent: #8ad3ff;
+  --muted: #cbd5e1;
+  --focus-ring: 0 0 0 4px rgba(122, 107, 255, 0.18);
+  --easing-fast: cubic-bezier(.2,.9,.3,1);
+  --easing-smooth: cubic-bezier(.22,.12,.28,1);
+  --duration-short: 180ms;
+  --duration-base: 320ms;
+  --duration-long: 600ms;
+  --node-glow: 0 8px 30px rgba(118,75,162,0.18);
+
   /* Border radius */
   --radius-none: 0;
   --radius-sm: 6px;

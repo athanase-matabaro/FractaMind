@@ -15,11 +15,11 @@ export const strings = {
    */
   hero: {
     title: 'Explore ideas like a fractal',
-    subtitle: 'Turn any text into an interactive, zoomable map of knowledge. Privacy-first, AI-powered.',
+    subtitle: 'Turn any text into an interactive, zoomable map of knowledge. Privacy-first — runs on your device.',
     ctaPrimary: 'Paste text or URL to begin',
     ctaSecondary: 'See demo',
-    privacyBadge: 'Processing stays on-device',
-    privacyBadgeAria: 'All AI processing happens locally in your browser',
+    privacyBadge: 'All processing happens locally in your browser — private & offline by default.',
+    privacyBadgeAria: 'All processing happens locally in your browser. Your data never leaves your device.',
   },
 
   /**
