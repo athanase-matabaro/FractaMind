@@ -1,0 +1,175 @@
+================================================================================
+DIAGNOSTIC REPORT: Chrome Built-in AI Integration Issue
+FractaMind AI Hang Analysis
+Generated: 2025-11-03
+================================================================================
+
+EXECUTIVE SUMMARY
+-----------------
+FractaMind is using an INCORRECT API namespace pattern to access Chrome's
+Built-in AI APIs, causing all AI operations to fail silently or hang
+indefinitely on "Processing...".
+
+ROOT CAUSE IDENTIFIED
+---------------------
+FractaMind attempts to access Chrome AI APIs via `window.ai.*` namespace:
+  - window.ai.languageModel.create()  ❌ INCORRECT
+  - window.ai.writer.create()         ❌ INCORRECT
+  - window.ai.summarizer.create()     ❌ INCORRECT
+  - window.ai.embedding.create()      ❌ INCORRECT
+
+However, the CORRECT API pattern (verified from web-ai-demos) uses
+GLOBAL constructors directly:
+  - LanguageModel.create()            ✅ CORRECT
+  - Writer.create()                   ✅ CORRECT
+  - Summarizer.create()               ✅ CORRECT (or window.Summarizer)
+  - Rewriter.create()                 ✅ CORRECT
+
+AFFECTED FILES IN FRACTAMIND
+----------------------------
+Primary file: /src/ai/chromeAI.js
+
+Affected functions:
+  1. checkAIAvailability() - Line 76-96
+     - Checks for 'window.ai.summarizer'
+     - Checks for 'window.ai.embedding'
+     - Checks for 'window.ai.writer'
+     - Checks for 'window.ai.languageModel'
+
+  2. summarizeDocument() - Line 154-301
+     - Line 194: window.ai.languageModel.create()
+     - Line 255: window.ai.summarizer.create()
+
+  3. generateEmbedding() - Line 335-394
+     - Line 369: window.ai.embedding.create()
+
+  4. expandNode() - Line 410-528
+     - Line 437: window.ai.languageModel.create()
+     - Line 488: window.ai.writer.create()
+
+  5. rewriteText() - Line 581-664
+     - Line 606: window.ai.languageModel.create()
+     - Line 641: window.ai.writer.create()
+
+TECHNICAL ANALYSIS
+------------------
+
+Issue Flow:
+1. User clicks "Generate Fractal" in FractaMind
+2. Application calls summarizeDocument() from chromeAI.js
+3. Function checks availability.available.prompt (line 192)
+4. Attempts: window.ai.languageModel.create() (line 194)
+5. window.ai is undefined or window.ai.languageModel doesn't exist
+6. Promise creation fails or returns undefined
+7. timeout() wrapper races against a non-existent promise
+8. Either:
+   a) Promise never resolves → timeout fires after 15s → fallback triggered
+   b) TypeError thrown → caught in catch block → fallback triggered
+9. Similar issue affects ALL AI API calls (summarizer, writer, embeddings)
+
+WHY THE HANG OCCURS:
+- The availability checks pass because they're checking for properties
+  that don't exist (returning false), so code falls through
+- Some paths may have async operations that don't properly reject
+- UI state not properly updated during error transitions
+- sessionStorage FORCE_MOCK_MODE may not be properly triggering
+
+COMPARISON WITH WEB-AI-DEMOS (VERIFIED WORKING IMPLEMENTATION)
+--------------------------------------------------------------
+
+File: web-ai-demos/prompt-api-playground/script.js
+- Line 36: Check with 'LanguageModel' in self
+- Line 210: Create with LanguageModel.create({ ... })
+
+File: web-ai-demos/writer-rewriter-api-playground/script.js
+- Line 14: Check with 'Writer' in self && 'Rewriter' in self
+- Line 82: Create with Writer.create({ ... })
+- Line 94: Create with Rewriter.create({ ... })
+
+File: web-ai-demos/summarization-api-playground/src/main.ts
+- Line 73: Check with self.Summarizer !== undefined
+- Line 54: Create with window.Summarizer.create({ ... })
+- Line 63: Check availability with window.Summarizer.availability()
+
+KEY DIFFERENCES:
+1. API Namespace:
+   - FractaMind: window.ai.* (WRONG)
+   - web-ai-demos: Global constructors (CORRECT)
+
+2. Availability Checks:
+   - FractaMind: 'ai' in window && 'languageModel' in window.ai
+   - web-ai-demos: 'LanguageModel' in self
+
+3. Session Creation:
+   - FractaMind: await window.ai.languageModel.create()
+   - web-ai-demos: await LanguageModel.create()
+
+EMBEDDINGS API NOTE:
+No embeddings API demo found in web-ai-demos repository. This suggests:
+- Embeddings API may be experimental/undocumented
+- May use different pattern than other APIs
+- May not be available in current Chrome builds
+- FractaMind may need to use alternative approach or mock only
+
+REQUIRED FIXES
+--------------
+
+1. Update checkAIAvailability() function:
+   - Change: 'ai' in window && 'summarizer' in window.ai
+   - To: 'Summarizer' in self
+
+   - Change: 'ai' in window && 'languageModel' in window.ai
+   - To: 'LanguageModel' in self
+
+   - Change: 'ai' in window && 'writer' in window.ai
+   - To: 'Writer' in self
+
+   - Change: 'ai' in window && 'embedding' in window.ai
+   - To: Check for alternative embeddings API or always use mock
+
+2. Update summarizeDocument() function:
+   - Line 194: window.ai.languageModel.create()
+     → LanguageModel.create()
+
+   - Line 255: window.ai.summarizer.create()
+     → Summarizer.create() or window.Summarizer.create()
+
+3. Update generateEmbedding() function:
+   - Line 369: window.ai.embedding.create()
+     → Investigate correct embeddings API or always use mock
+
+4. Update expandNode() function:
+   - Line 437: window.ai.languageModel.create()
+     → LanguageModel.create()
+
+   - Line 488: window.ai.writer.create()
+     → Writer.create()
+
+5. Update rewriteText() function:
+   - Line 606: window.ai.languageModel.create()
+     → LanguageModel.create()
+
+   - Line 641: window.ai.writer.create()
+     → Writer.create()
+
+VALIDATION PLAN
+---------------
+After applying fixes:
+1. Verify availability checks return correct values
+2. Test summarizeDocument() with sample text
+3. Test expandNode() with sample node
+4. Verify mock mode still works (VITE_AI_MODE=mock)
+5. Verify timeout/fallback mechanisms still work
+6. Test sessionStorage FORCE_MOCK_MODE feature
+
+ADDITIONAL NOTES
+----------------
+- Mock mode functionality should remain unchanged
+- Timeout wrappers are correctly implemented and should continue working
+- Fallback to mocks is a good safety feature and should be preserved
+- The parseAIJSON() helper is well-designed and doesn't need changes
+- Error handling structure is solid, just needs correct API calls
+
+================================================================================
+END OF DIAGNOSTIC REPORT
+================================================================================

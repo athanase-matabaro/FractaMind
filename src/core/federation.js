@@ -27,7 +27,7 @@ import {
 } from '../db/fractamind-indexer.js';
 
 const DB_NAME = 'fractamind-federation-db';
-const DB_VERSION = 2; // Increment to add project stores
+let DB_VERSION = 2; // Increment to add project stores
 const STORE_PREFIX = 'project_';
 const STORE_GLOBAL_META = 'federationMeta';
 
@@ -38,6 +38,11 @@ const projectStores = new Set(); // Track created stores
  * Open federation database
  */
 function openFederationDB(projectIds = []) {
+  // Increment version if we're adding new stores
+  if (projectIds.some(id => !projectStores.has(id))) {
+    DB_VERSION++;
+  }
+
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 

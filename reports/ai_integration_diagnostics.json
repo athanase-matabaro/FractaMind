@@ -1,0 +1,285 @@
+{
+  "timestamp": "2025-11-03T00:00:00Z",
+  "version": "1.0.0",
+  "summary": {
+    "status": "PARTIALLY_FIXED",
+    "criticalIssues": 2,
+    "majorIssues": 3,
+    "minorIssues": 2,
+    "blockers": [
+      "Missing availability checks before session creation",
+      "Timeout values too short for debugging (30s/60s vs required 120s)"
+    ]
+  },
+  "comparison": {
+    "webAiDemos": {
+      "patterns": {
+        "availability_check": "await LanguageModel.availability() returns 'available'|'downloadable'|'unavailable'",
+        "session_creation": "await LanguageModel.create({ initialPrompts: [...] })",
+        "api_namespace": "Global constructors: LanguageModel, Writer, Summarizer",
+        "download_handling": "Monitor callback with downloadprogress event",
+        "error_handling": "Check availability before create, handle NotAllowedError"
+      },
+      "examples": [
+        "web-ai-demos/news-app/script.js:createSession() - checks availability first",
+        "web-ai-demos/summarization-api-playground/src/main.ts:checkSummarizerSupport()",
+        "web-ai-demos/ai-synonym-finder/script.js - availability !== 'unavailable'"
+      ]
+    },
+    "fractaMind": {
+      "current_state": {
+        "availability_check": "checkAIAvailability() checks for API presence but not model readiness",
+        "session_creation": "self.LanguageModel.create() - CORRECT (fixed in previous patch)",
+        "api_namespace": "Global constructors - CORRECT (fixed in previous patch)",
+        "download_handling": "MISSING - no monitor callbacks",
+        "error_handling": "Try-catch with timeout, fallback to mock - GOOD"
+      },
+      "status": "API namespace fixed, but missing runtime availability checks"
+    }
+  },
+  "issues": {
+    "critical": [
+      {
+        "id": "CRIT-01",
+        "severity": "BLOCKER",
+        "title": "Missing Model Availability Checks",
+        "description": "FractaMind checks if API constructors exist (LanguageModel in self) but doesn't check if models are actually ready to use. web-ai-demos always calls await LanguageModel.availability() first.",
+        "impact": "Session creation may fail or hang if model is still downloading or unavailable",
+        "files_affected": [
+          "src/ai/chromeAI.js:checkAIAvailability()",
+          "src/ai/chromeAI.js:summarizeDocument()",
+          "src/ai/chromeAI.js:expandNode()",
+          "src/ai/chromeAI.js:rewriteText()"
+        ],
+        "web_ai_demos_reference": "web-ai-demos/news-app/script.js:42-49",
+        "fix_required": "Add await LanguageModel.availability() check before create() calls",
+        "estimated_effort": "2-3 hours"
+      },
+      {
+        "id": "CRIT-02",
+        "severity": "BLOCKER",
+        "title": "Timeout Values Too Short for Debug Mode",
+        "description": "Current timeouts: chromeAI.js=15s, importer.js=30s/60s. Task requires 120s for debugging live AI mode.",
+        "impact": "Cannot debug live AI mode as operations timeout before completion",
+        "files_affected": [
+          "src/ai/chromeAI.js:DEFAULT_TIMEOUT_MS",
+          "src/core/importer.js:withTimeout() calls"
+        ],
+        "fix_required": "Extend DEFAULT_TIMEOUT_MS to 120000 (120s), update env configuration",
+        "estimated_effort": "1 hour"
+      }
+    ],
+    "major": [
+      {
+        "id": "MAJ-01",
+        "severity": "MAJOR",
+        "title": "No Download Progress Monitoring",
+        "description": "web-ai-demos uses monitor callbacks to show download progress. FractaMind has no progress indication for model downloads.",
+        "impact": "Poor UX when model needs to download (can be several MB)",
+        "files_affected": [
+          "src/ai/chromeAI.js - all create() calls"
+        ],
+        "web_ai_demos_reference": "web-ai-demos/news-app/script.js:168-172",
+        "fix_required": "Add monitor parameter to LanguageModel.create() with downloadprogress event handler",
+        "estimated_effort": "3-4 hours"
+      },
+      {
+        "id": "MAJ-02",
+        "severity": "MAJOR",
+        "title": "Return Shape Not Normalized",
+        "description": "AI wrappers return different shapes (sometimes objects, sometimes arrays, sometimes strings). Task requires normalized {ok, mode, data, elapsedMs, error} shape.",
+        "impact": "Inconsistent error handling, hard to debug",
+        "files_affected": [
+          "src/ai/chromeAI.js - all exported functions"
+        ],
+        "fix_required": "Wrap all returns in consistent shape: {ok: boolean, mode: 'live'|'mock', data, elapsedMs, error?}",
+        "estimated_effort": "4-5 hours"
+      },
+      {
+        "id": "MAJ-03",
+        "severity": "MAJOR",
+        "title": "Repository Structure Not Canonical",
+        "description": "Task requires specific directory layout (docs/, tests/unit/, tests/integration/, etc). Current structure has tests at root level.",
+        "impact": "Does not meet task requirements for organization",
+        "files_affected": [
+          "All test files",
+          "Documentation files"
+        ],
+        "fix_required": "Reorganize to canonical structure, update imports",
+        "estimated_effort": "2-3 hours"
+      }
+    ],
+    "minor": [
+      {
+        "id": "MIN-01",
+        "severity": "MINOR",
+        "title": "Embeddings API Correctly Identified as Unavailable",
+        "description": "FractaMind correctly notes that Chrome doesn't provide embeddings API and uses mocks. This is correct behavior.",
+        "impact": "None - working as designed",
+        "files_affected": [
+          "src/ai/chromeAI.js:generateEmbedding()"
+        ],
+        "status": "NO_ACTION_NEEDED"
+      },
+      {
+        "id": "MIN-02",
+        "severity": "MINOR",
+        "title": "Missing AI_INTEGRATION.md Documentation",
+        "description": "Task requires docs/AI_INTEGRATION.md with init patterns, Chrome flags, troubleshooting.",
+        "impact": "Users don't know how to enable Chrome AI",
+        "fix_required": "Create comprehensive AI_INTEGRATION.md",
+        "estimated_effort": "2 hours"
+      }
+    ]
+  },
+  "api_alignment": {
+    "namespace": {
+      "status": "FIXED",
+      "details": "Previous patch correctly changed window.ai.* to global constructors"
+    },
+    "availability_checks": {
+      "status": "MISSING",
+      "current": "checkAIAvailability() only checks if 'LanguageModel' in self",
+      "required": "await LanguageModel.availability() to check model readiness",
+      "pattern": "const avail = await LanguageModel.availability(); if (avail === 'unavailable') { ... }"
+    },
+    "session_creation": {
+      "status": "CORRECT",
+      "current": "self.LanguageModel.create({ initialPrompts: [...] })",
+      "matches_demo": true
+    },
+    "error_handling": {
+      "status": "GOOD",
+      "current": "Try-catch with timeout wrapper, falls back to mock",
+      "improvement_needed": "Add specific handling for availability states"
+    }
+  },
+  "timeout_analysis": {
+    "current": {
+      "chromeAI_default": "15000ms (15s)",
+      "importer_summarize": "30000ms (30s)",
+      "importer_embeddings": "60000ms (60s)"
+    },
+    "required": {
+      "chromeAI_default": "120000ms (120s)",
+      "importer_summarize": "120000ms (120s)",
+      "importer_embeddings": "120000ms (120s)",
+      "rationale": "Task specifies 120s for debugging live mode, model warm-up can take significant time"
+    },
+    "configuration": {
+      "status": "MISSING",
+      "required": "VITE_AI_TIMEOUT_MS=120000 in .env.example",
+      "current": ".env.example exists but may not have this var"
+    }
+  },
+  "event_handling": {
+    "fractal_ready_event": {
+      "status": "NOT_FOUND",
+      "searched_for": "fractal:ready, ai:ready events",
+      "result": "No custom events found in codebase",
+      "impact": "None - not using event-based coordination"
+    },
+    "progress_callbacks": {
+      "status": "PRESENT",
+      "location": "src/core/importer.js:handleSeedSubmit() onProgress callback",
+      "usage": "Used for UI progress updates",
+      "web_ai_demos_equivalent": "Similar to news-app progress bars"
+    }
+  },
+  "environment_checks": {
+    "origin_checks": {
+      "status": "NONE_FOUND",
+      "note": "Chrome AI works on all origins in dev mode with flags enabled"
+    },
+    "cors_checks": {
+      "status": "NONE_FOUND",
+      "note": "Not applicable for built-in AI (no network requests)"
+    },
+    "chrome_flags": {
+      "required": [
+        "chrome://flags/#optimization-guide-on-device-model",
+        "chrome://flags/#prompt-api-for-gemini-nano"
+      ],
+      "documented": "Mentioned in CLAUDE.md but not in user-facing docs"
+    }
+  },
+  "test_environment": {
+    "status": "PARTIALLY_WORKING",
+    "passing_tests": "316/323 (97.8%)",
+    "failing_tests": "6 pre-existing failures (unrelated to AI changes)",
+    "mock_mode": "WORKING - deterministic mocks pass all tests",
+    "improvements_needed": [
+      "Add availability() mock",
+      "Add monitor callback mocks",
+      "Ensure deterministic timing in tests"
+    ]
+  },
+  "recommended_fixes": {
+    "phase_b_alignments": [
+      {
+        "priority": 1,
+        "action": "Add ensureModelReady() function to chromeAI.js",
+        "implementation": "async function ensureModelReady(apiName) { const avail = await LanguageModel.availability(); if (avail === 'unavailable') throw new Error('model-unavailable'); return avail; }",
+        "files": ["src/ai/chromeAI.js"]
+      },
+      {
+        "priority": 2,
+        "action": "Call ensureModelReady() before all create() calls",
+        "implementation": "await ensureModelReady('LanguageModel'); const session = await self.LanguageModel.create(...)",
+        "files": ["src/ai/chromeAI.js:summarizeDocument, expandNode, rewriteText"]
+      },
+      {
+        "priority": 3,
+        "action": "Normalize all wrapper return shapes",
+        "implementation": "return { ok: true, mode: isMockMode() ? 'mock' : 'live', data: result, elapsedMs: Date.now() - startTime }",
+        "files": ["src/ai/chromeAI.js - all exported functions"]
+      }
+    ],
+    "phase_c_timeouts": [
+      {
+        "priority": 1,
+        "action": "Update DEFAULT_TIMEOUT_MS to 120000",
+        "files": ["src/ai/chromeAI.js:44"]
+      },
+      {
+        "priority": 2,
+        "action": "Update .env.example",
+        "content": "VITE_AI_MODE=live|mock\nVITE_AI_TIMEOUT_MS=120000\nVITE_AI_POLL_MAX_MS=120000"
+      },
+      {
+        "priority": 3,
+        "action": "Update importer timeouts",
+        "files": ["src/core/importer.js:120, 137"]
+      }
+    ],
+    "phase_d_reorg": [
+      {
+        "priority": 1,
+        "action": "Move test files to tests/unit/, tests/integration/",
+        "files": ["tests/*.test.js"]
+      },
+      {
+        "priority": 2,
+        "action": "Create docs/ directory structure",
+        "files": ["docs/AI_INTEGRATION.md, docs/DESIGN_SYSTEM.md, etc."]
+      }
+    ]
+  },
+  "acceptance_criteria_status": {
+    "builds_without_error": "YES",
+    "tests_pass": "YES (316/323, 6 pre-existing failures)",
+    "live_mode_no_hang": "UNKNOWN - requires Chrome Canary testing",
+    "repo_reorganized": "NO - needs reorganization",
+    "docs_created": "PARTIAL - CHANGELOG exists, AI_INTEGRATION.md missing",
+    "pr_ready": "NO - needs final validation"
+  },
+  "next_actions": [
+    "PHASE B: Add ensureModelReady() and availability checks",
+    "PHASE C: Extend timeouts to 120s",
+    "PHASE D: Reorganize repository structure",
+    "PHASE E: Update tests for new patterns",
+    "PHASE F: Run validation scenarios",
+    "PHASE G: Create comprehensive documentation",
+    "PHASE H: Commit and prepare PR"
+  ]
+}

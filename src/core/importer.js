@@ -25,6 +25,13 @@ import { generateUUID } from '../utils/uuid.js';
 import { registerProject } from './projectRegistry.js';
 import { addProjectIndex, initFederation } from './federation.js';
 
+// MODULE LOAD VERIFICATION - Force browser to recognize changes
+console.log('%c📦 importer.js MODULE LOADED - v3.5 with non-blocking workspace registration', 'background: green; color: white; padding: 4px; font-weight: bold');
+
+// Read timeout from environment (default: 10 minutes for debugging)
+const AI_TIMEOUT_MS = Number(import.meta.env.VITE_AI_TIMEOUT_MS || 600000);
+console.log(`[IMPORTER] Using AI timeout: ${AI_TIMEOUT_MS}ms (${AI_TIMEOUT_MS/1000}s)`);
+
 /**
  * Watchdog wrapper - ensures promise resolves within timeout or falls back
  * @param {Promise} promise - The promise to watch
@@ -68,31 +75,69 @@ async function withWatchdog(promise, timeoutMs, fallbackValue, operationName) {
 export async function handleSeedSubmit(text, projectMeta = {}, onProgress = null) {
   try {
     // Ensure IndexedDB is initialized
+    console.log('🔵 [IMPORTER] handleSeedSubmit START - initializing DB...');
     await initDB();
-    await initFederation();
+    console.log('🔵 [IMPORTER] initDB complete, initializing federation...');
 
-    // Check AI availability and warn user if not available
-    const availability = checkAIAvailability();
-    if (!availability.allAvailable) {
-      console.warn('Some Chrome Built-in AI APIs are not available:', availability.missingAPIs);
-      console.warn('Falling back to mock mode. For full AI functionality, enable chrome://flags/#optimization-guide-on-device-model');
+    // CRITICAL FIX: initFederation() can hang indefinitely
+    // Make it non-blocking with a 5-second timeout since it's not critical for import
+    try {
+      await Promise.race([
+        initFederation(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Federation init timeout')), 5000))
+      ]);
+      console.log('🔵 [IMPORTER] initFederation complete');
+    } catch (federationError) {
+      console.warn('⚠️ [IMPORTER] initFederation failed or timed out (non-critical):', federationError.message);
+      console.log('🔵 [IMPORTER] Continuing without federation...');
+    }
+
+    // Check if user explicitly requested mock mode (from timeout recovery)
+    const forcedMock = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('FORCE_MOCK_MODE') === 'true';
+    console.log('📝 [IMPORTER] handleSeedSubmit called', {
+      forcedMock,
+      sessionStorageValue: typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('FORCE_MOCK_MODE') : 'N/A'
+    });
+
+    if (forcedMock) {
+      console.log('🔴 [IMPORTER] FORCE_MOCK_MODE detected - skipping AI availability check');
       onProgress?.({
         step: 'warning',
         progress: 0.05,
-        message: `AI fallback mode enabled (missing: ${availability.missingAPIs.join(', ')})`
+        message: '⚠️ Using mock mode (user requested fast fallback)'
       });
+    } else {
+      // Check AI availability and warn user if not available
+      const availability = checkAIAvailability();
+      if (!availability.allAvailable) {
+        console.warn('Some Chrome Built-in AI APIs are not available:', availability.missingAPIs);
+        console.warn('Falling back to mock mode. For full AI functionality, enable chrome://flags/#optimization-guide-on-device-model');
+        onProgress?.({
+          step: 'warning',
+          progress: 0.05,
+          message: `⚠️ AI unavailable - using mock mode (missing: ${availability.missingAPIs.join(', ')}). Results will be deterministic.`
+        });
+      } else {
+        console.log('✅ All Chrome Built-in AI APIs available - using live mode');
+        onProgress?.({
+          step: 'ai-ready',
+          progress: 0.05,
+          message: '✅ Chrome AI ready - using live mode'
+        });
+      }
     }
 
     // Step 1: Report progress
     onProgress?.({ step: 'summarizing', progress: 0.1, message: 'Analyzing document...' });
 
     // Step 2: Import and summarize document with timeout
+    // UPDATED: Now reads from VITE_AI_TIMEOUT_MS environment variable
     let importResult;
     try {
       importResult = await withTimeout(
         importDocument(text, projectMeta),
-        30000, // 30 second timeout
-        'Document summarization timed out after 30 seconds'
+        AI_TIMEOUT_MS, // Configurable timeout (default: 600s / 10 minutes)
+        `Document summarization timed out after ${AI_TIMEOUT_MS/1000} seconds`
       );
     } catch (error) {
       console.error('Import document failed:', error);
@@ -104,12 +149,13 @@ export async function handleSeedSubmit(text, projectMeta = {}, onProgress = null
     onProgress?.({ step: 'embedding', progress: 0.5, message: 'Generating embeddings...' });
 
     // Step 3: Attach embeddings and Morton keys with timeout
+    // UPDATED: Now reads from VITE_AI_TIMEOUT_MS environment variable
     let nodesWithEmbeddings;
     try {
       nodesWithEmbeddings = await withTimeout(
         attachEmbeddingsAndKeys(nodes),
-        60000, // 60 second timeout (embeddings take longer)
-        'Embedding generation timed out after 60 seconds'
+        AI_TIMEOUT_MS, // Configurable timeout (default: 600s / 10 minutes)
+        `Embedding generation timed out after ${AI_TIMEOUT_MS/1000} seconds`
       );
     } catch (error) {
       console.error('Embedding generation failed:', error);
@@ -124,10 +170,15 @@ export async function handleSeedSubmit(text, projectMeta = {}, onProgress = null
     onProgress?.({ step: 'federating', progress: 0.9, message: 'Registering in workspace...' });
 
     // Step 5: Register project in federation workspace (non-blocking, errors are warnings)
+    // CRITICAL FIX: Add 5-second timeout since this can hang indefinitely
     try {
-      await registerProjectInWorkspace(project, nodesWithEmbeddings, rootNode);
+      await Promise.race([
+        registerProjectInWorkspace(project, nodesWithEmbeddings, rootNode),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Workspace registration timeout')), 5000))
+      ]);
+      console.log('✅ [IMPORTER] Workspace registration complete');
     } catch (error) {
-      console.warn('Failed to register in workspace:', error);
+      console.warn('⚠️ [IMPORTER] Failed to register in workspace (non-critical):', error.message);
       // Continue - federation failure is non-critical
     }
 
@@ -169,15 +220,40 @@ function withTimeout(promise, timeoutMs, errorMessage) {
  * @returns {Promise<{project: Object, rootNode: Object, nodes: Array}>}
  */
 export async function importDocument(text, projectMeta = {}) {
+  // Check if force mock mode is set
+  const forcedMock = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('FORCE_MOCK_MODE') === 'true';
+  console.log('📝 [IMPORTER] importDocument called', {
+    forcedMock,
+    sessionStorageValue: typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('FORCE_MOCK_MODE') : 'N/A',
+    textLength: text.length
+  });
+
   // Summarize document into 3-7 top-level topics
-  // Wrap with watchdog to prevent hangs (17s = wrapper 15s + 2s buffer)
-  const mockFallback = await mockSummarize(text, { maxTopics: 5 });
-  const summaryResult = await withWatchdog(
-    summarizeDocument(text, { maxTopics: 5 }),
-    17000,
-    mockFallback,
-    'importDocument.summarize'
-  );
+  let summaryResult;
+
+  if (forcedMock) {
+    // User explicitly requested mock mode - skip AI entirely
+    console.log('📝 [IMPORTER] FORCE_MOCK_MODE detected - using mock summarization directly');
+    summaryResult = await mockSummarize(text, { maxTopics: 5 });
+    console.log('📝 [IMPORTER] Mock summarization completed (FORCED)');
+  } else {
+    // Normal flow: try live AI with mock fallback
+    console.log('📝 [IMPORTER] Creating mockFallback...');
+    const mockFallback = await mockSummarize(text, { maxTopics: 5 });
+    console.log('📝 [IMPORTER] mockFallback created, calling summarizeDocument...');
+
+    summaryResult = await withWatchdog(
+      summarizeDocument(text, { maxTopics: 5 }),
+      17000,
+      mockFallback,
+      'importDocument.summarize'
+    );
+    console.log('📝 [IMPORTER] summarizeDocument completed');
+  }
+
+  // Extract topics array from result (handles both {summary, topics} and direct array formats)
+  const topics = Array.isArray(summaryResult) ? summaryResult : (summaryResult.topics || []);
+  const documentSummary = summaryResult.summary || topics[0]?.summary || 'Document summary';
 
   // Create project and root node
   const projectId = generateUUID();
@@ -193,6 +269,7 @@ export async function importDocument(text, projectMeta = {}) {
       sourceUrl: projectMeta.sourceUrl || null,
       wordCount: text.split(/\s+/).length,
       charCount: text.length,
+      documentSummary, // Store overall summary
       ...projectMeta,
     },
   };
@@ -202,7 +279,7 @@ export async function importDocument(text, projectMeta = {}) {
     id: rootNodeId,
     title: projectMeta.name || 'Document Root',
     text: text.slice(0, 1000), // Store first 1000 chars
-    summary: `Document with ${summaryResult.length} main topics`,
+    summary: `Document with ${topics.length} main topics`,
     children: [],
     parent: null,
     embedding: null, // Will be set in attachEmbeddingsAndKeys
@@ -216,7 +293,7 @@ export async function importDocument(text, projectMeta = {}) {
   };
 
   // Parse summary into child nodes
-  const childNodes = parseSummaryToNodes(summaryResult, {
+  const childNodes = parseSummaryToNodes(topics, {
     projectId,
     parentId: rootNodeId,
     depth: 1,
@@ -283,19 +360,32 @@ export function parseSummaryToNodes(summaryResult, options = {}) {
  * @returns {Promise<Array<Object>>} - Nodes with embeddings and Morton keys
  */
 export async function attachEmbeddingsAndKeys(nodes) {
+  // Check if force mock mode is set
+  const forcedMock = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('FORCE_MOCK_MODE') === 'true';
+
   // Step 1: Generate embeddings for all nodes
   const texts = nodes.map((node) => `${node.title}. ${node.text}`.slice(0, 2000));
 
-  // Wrap with watchdog to prevent hangs (20s = allows for batch processing)
-  const mockEmbeddings = await Promise.all(
-    texts.map(text => mockEmbeddingFromText(text, 512, 'mock'))
-  );
-  const embeddings = await withWatchdog(
-    batchGenerateEmbeddings(texts),
-    20000,
-    mockEmbeddings,
-    'attachEmbeddingsAndKeys.batch'
-  );
+  let embeddings;
+  if (forcedMock) {
+    // User explicitly requested mock mode - skip AI entirely
+    console.log('📝 [IMPORTER] FORCE_MOCK_MODE detected - using mock embeddings directly');
+    embeddings = await Promise.all(
+      texts.map(text => mockEmbeddingFromText(text, 512, 'mock'))
+    );
+    console.log('📝 [IMPORTER] Mock embeddings generated (FORCED):', embeddings.length);
+  } else {
+    // Normal flow: try live AI with mock fallback
+    const mockEmbeddings = await Promise.all(
+      texts.map(text => mockEmbeddingFromText(text, 512, 'mock'))
+    );
+    embeddings = await withWatchdog(
+      batchGenerateEmbeddings(texts),
+      20000,
+      mockEmbeddings,
+      'attachEmbeddingsAndKeys.batch'
+    );
+  }
 
   // Step 2: Compute quantization parameters from all embeddings
   const quantParams = computeQuantizationParams(
