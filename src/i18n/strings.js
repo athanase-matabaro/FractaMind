@@ -39,6 +39,12 @@ Examples:
     submittingButton: 'Processing...',
     trySampleButton: 'Try sample',
     privacyHint: 'All processing happens locally in your browser. Your data never leaves your device.',
+    helperHint: 'Examples: copy/paste an article, drop a URL, or paste notes. Max ~10,000 words.',
+    keyboardHint: 'Press Ctrl+Enter to generate',
+    progressAnnouncement: 'Analyzing document — this may take up to 2 minutes. All processing happens locally.',
+    successAnnouncement: 'Analysis complete — fractal ready.',
+    fallbackAnnouncement: 'AI not reachable — using local demo summary to continue.',
+    aiTakingLonger: 'AI taking longer — Continue with demo summary',
 
     // Sample options
     samples: {
