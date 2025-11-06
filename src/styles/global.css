@@ -10,14 +10,28 @@
    ========================================== */
 
 :root {
-  /* Colors - Background gradients */
+  /* Colors - Background gradients (Fractal Studio Theme) */
   --color-bg-gradient-start: #667eea;
   --color-bg-gradient-end: #764ba2;
+
+  /* Cinematic Fractal Theme (v1.2) */
+  --color-deep-navy: #0F172A;
+  --color-surface-dark: #0B1220;
+  --color-surface-darker: #030416;
+  --color-starfield-base: #081024;
+
+  /* Fractal Accent Gradient */
+  --color-teal-start: #00C2A8;
+  --color-violet-end: #6C5CE7;
+  --fractal-gradient: linear-gradient(135deg, var(--color-teal-start) 0%, var(--color-violet-end) 100%);
+  --fractal-glow: radial-gradient(circle at center, rgba(0, 194, 168, 0.3) 0%, rgba(108, 92, 231, 0.3) 100%);
 
   /* Colors - Accent */
   --color-accent: #667eea;
   --color-accent-muted: #a5b4fc;
   --color-accent-dark: #4c51bf;
+  --color-accent-teal: #00C2A8;
+  --color-accent-violet: #6C5CE7;
 
   /* Colors - Text */
   --color-text-primary: #1f2937;
@@ -125,6 +139,50 @@
   --duration-base: 320ms;
   --duration-long: 600ms;
   --node-glow: 0 8px 30px rgba(118,75,162,0.18);
+
+  /* Glass Morphism System (v1.2) */
+  --glass-surface: rgba(11, 18, 32, 0.6);
+  --glass-surface-light: rgba(15, 23, 42, 0.4);
+  --glass-blur: 14px;
+  --glass-border: 1px solid rgba(230, 238, 243, 0.1);
+  --glass-shadow: 0 12px 28px rgba(2, 6, 23, 0.12);
+  --glass-shadow-lg: 0 20px 40px rgba(2, 6, 23, 0.18);
+  --glass-radius: 14px;
+
+  /* Fractal Studio Typography */
+  --font-display: 'Inter', var(--font-sans);
+  --font-code: 'Roboto Mono', var(--font-mono);
+  --font-size-display: 48px;
+  --font-size-h1-studio: 28px;
+  --font-size-h2-studio: 18px;
+  --font-size-caption: 11px;
+  --font-weight-display: 600;
+
+  /* Grid System & Layout */
+  --grid-columns: 12;
+  --grid-gutter: 24px;
+  --spacing-base: 16px;
+  --panel-min-width: 320px;
+  --panel-max-width: 420px;
+  --toolbar-height: 56px;
+  --timeline-height: 120px;
+
+  /* Starfield & Effects */
+  --starfield-bg: radial-gradient(ellipse at top, rgba(8, 16, 36, 0.9) 0%, var(--color-surface-darker) 100%);
+  --parallax-blur: blur(2px);
+  --motion-blur: blur(4px);
+  --neon-outline: 0 0 8px rgba(0, 194, 168, 0.6);
+  --selection-glow: 0 0 16px rgba(108, 92, 231, 0.8);
+
+  /* Fractal Growth Animation */
+  --growth-duration: 900ms;
+  --growth-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --branch-delay: 120ms;
+
+  /* Text Colors (Cinematic) */
+  --color-text-cinematic: #E6EEF3;
+  --color-text-dim: rgba(230, 238, 243, 0.6);
+  --color-text-muted-dark: rgba(230, 238, 243, 0.4);
 
   /* Border radius */
   --radius-none: 0;

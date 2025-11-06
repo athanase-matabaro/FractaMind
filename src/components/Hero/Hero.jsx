@@ -7,16 +7,21 @@ import { strings } from '../../i18n/strings';
 import './Hero.css';
 
 /**
- * Hero Component
+ * Hero Component (v1.2 - Cinematic Fractal Theme)
  *
- * Full-bleed hero section for FractaMind homepage.
+ * Full-screen cinematic hero with starfield background and centered composition.
  * Features:
- * - Twilight gradient background
- * - Left: Headline + subhead + CTAs + privacy badge
- * - Right: Animated FractalSeed preview
- * - Primary CTA opens OnboardPopover for micro-commit
- * - Secondary CTA plays demo with mock pipeline
- * - Fully accessible and responsive
+ * - Cinematic starfield background (#030416 → #081024 gradient)
+ * - Beta badge in top-left corner
+ * - Centered large fractal (600px) with teal-to-violet glow
+ * - 6s continuous growth loop animation
+ * - Glass morphism surfaces
+ * - Headline: "Make recursive art. Animate it. Export it." (48px Inter semi-bold)
+ * - Centered content layout (fractal above, text below)
+ * - Primary CTA opens OnboardPopover for project creation
+ * - Secondary CTA triggers demo mode
+ * - Fully accessible with reduced motion support
+ * - Responsive breakpoints for tablet and mobile
  *
  * @param {Object} props
  * @param {Function} props.onStartImport - Callback when user completes onboarding
@@ -77,13 +82,31 @@ const Hero = ({ onStartImport, onDemoStart, demoMode = true }) => {
       role="banner"
       aria-labelledby="hero-title"
     >
-      {/* Background gradient with animated fractal */}
+      {/* Cinematic starfield background */}
       <div className="hero-background" aria-hidden="true">
-        <SeedFractal opacity={0.12} />
+        <SeedFractal opacity={0.08} />
+      </div>
+
+      {/* Beta badge - top left */}
+      <div className="hero-beta-badge" aria-label="Beta version">
+        {strings.hero.betaBadge}
       </div>
 
       <div className="hero-container">
-        {/* Content (left side) */}
+        {/* Visual (centered, order 1) - Large FractalSeed with cinematic glow */}
+        <div className="hero-visual" aria-hidden="true">
+          <div className="hero-seed-wrapper">
+            <FractalSeed
+              key={seedKey}
+              size={600}
+              color="#ffffff"
+              animationDelay={200}
+              autoPlay={true}
+            />
+          </div>
+        </div>
+
+        {/* Content (centered, order 2) */}
         <div className="hero-content">
           <h1 id="hero-title" className="hero-title">
             {strings.hero.title}
@@ -142,19 +165,6 @@ const Hero = ({ onStartImport, onDemoStart, demoMode = true }) => {
             <span className="hero-privacy-text" aria-label={strings.hero.privacyBadgeAria}>
               {strings.hero.privacyBadge}
             </span>
-          </div>
-        </div>
-
-        {/* Visual (right side) - FractalSeed animation */}
-        <div className="hero-visual" aria-hidden="true">
-          <div className="hero-seed-wrapper">
-            <FractalSeed
-              key={seedKey}
-              size={280}
-              color="#ffffff"
-              animationDelay={300}
-              autoPlay={true}
-            />
           </div>
         </div>
       </div>
