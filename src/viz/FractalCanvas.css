@@ -9,7 +9,7 @@
   outline: none;
 }
 
-/* HUD Controls */
+/* HUD Controls - Enhanced with Glass Morphism (v1.1) */
 .fractal-hud {
   position: absolute;
   top: 1rem;
@@ -22,24 +22,35 @@
 
 .hud-button {
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all var(--duration-base, 320ms) var(--easing-fast, cubic-bezier(.2,.9,.3,1));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .hud-button:hover {
-  background: white;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
 }
 
 .hud-button:active {
   transform: translateY(0);
+  transition-duration: var(--duration-short, 180ms);
+}
+
+.hud-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring, 0 0 0 4px rgba(122, 107, 255, 0.18)), 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .hud-info {
@@ -144,7 +155,7 @@
   transition: none;
 }
 
-/* SVG Edges */
+/* SVG Edges - Enhanced with Drawing Animation (v1.1) */
 .fractal-edges {
   position: absolute;
   top: 0;
@@ -157,14 +168,30 @@
 .edge-line {
   stroke: rgba(255, 255, 255, 0.2);
   stroke-linecap: round;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawEdge 0.8s var(--easing-smooth, cubic-bezier(.22,.12,.28,1)) forwards;
 }
 
-/* Fractal Nodes */
+@keyframes drawEdge {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Stagger edge animations when parent expands */
+.fractal-node.expanding ~ .fractal-edges .edge-line {
+  animation-delay: 0.2s;
+}
+
+/* Fractal Nodes - Enhanced Animations (v1.1) */
 .fractal-node {
   position: absolute;
   transform: translate(-50%, -50%);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  /* Initial state for new nodes (children that just appeared) */
+  opacity: 1;
 }
 
 .fractal-node:hover {
@@ -177,29 +204,61 @@
   outline-offset: 4px;
 }
 
+.fractal-node:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring, 0 0 0 4px rgba(122, 107, 255, 0.18));
+}
+
 .fractal-node.selected {
   z-index: 20;
 }
 
 .fractal-node.selected .node-circle {
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.5), var(--node-glow, 0 8px 30px rgba(118,75,162,0.18));
 }
 
+/* Parent node pulse animation when expanding */
 .fractal-node.expanding .node-circle {
-  animation: pulse 1.5s ease-in-out infinite;
+  animation: expandPulse 0.6s var(--easing-smooth, cubic-bezier(.22,.12,.28,1));
 }
 
-@keyframes pulse {
-  0%,
-  100% {
+@keyframes expandPulse {
+  0% {
     transform: scale(1);
-    opacity: 1;
   }
   50% {
-    transform: scale(1.1);
-    opacity: 0.8;
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
   }
 }
+
+/* New child nodes radiate out with stagger */
+.fractal-node.new-child {
+  animation: radiateIn 0.5s var(--easing-smooth, cubic-bezier(.22,.12,.28,1)) backwards;
+}
+
+@keyframes radiateIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Stagger delays for multiple children (applied via JS or :nth-child) */
+.fractal-node.new-child:nth-child(1) { animation-delay: 0ms; }
+.fractal-node.new-child:nth-child(2) { animation-delay: 60ms; }
+.fractal-node.new-child:nth-child(3) { animation-delay: 120ms; }
+.fractal-node.new-child:nth-child(4) { animation-delay: 180ms; }
+.fractal-node.new-child:nth-child(5) { animation-delay: 240ms; }
+.fractal-node.new-child:nth-child(6) { animation-delay: 300ms; }
+.fractal-node.new-child:nth-child(7) { animation-delay: 360ms; }
+.fractal-node.new-child:nth-child(8) { animation-delay: 420ms; }
 
 /* Node Circle */
 .node-circle {
@@ -263,7 +322,7 @@
   font-weight: 600;
 }
 
-/* Node Details Panel */
+/* Node Details Panel - Enhanced with Staggered Reveal (v1.1) */
 .node-details-panel {
   position: absolute;
   right: 0;
@@ -275,15 +334,17 @@
   overflow-y: auto;
   z-index: 50;
   padding: 1.5rem;
-  animation: slideInRight 0.3s ease-out;
+  animation: slideInRight 0.4s var(--easing-smooth, cubic-bezier(.22,.12,.28,1));
 }
 
 @keyframes slideInRight {
   from {
     transform: translateX(100%);
+    opacity: 0;
   }
   to {
     transform: translateX(0);
+    opacity: 1;
   }
 }
 
@@ -309,6 +370,8 @@
   font-size: 1.25rem;
   color: #1f2937;
   padding-right: 2rem;
+  animation: fadeInStagger 0.4s var(--easing-smooth, cubic-bezier(.22,.12,.28,1)) backwards;
+  animation-delay: 0.1s;
 }
 
 .node-text {
@@ -316,6 +379,8 @@
   color: #4b5563;
   line-height: 1.6;
   font-size: 0.875rem;
+  animation: fadeInStagger 0.4s var(--easing-smooth, cubic-bezier(.22,.12,.28,1)) backwards;
+  animation-delay: 0.2s;
 }
 
 .panel-meta {
@@ -324,6 +389,8 @@
   background: #f9fafb;
   border-radius: 6px;
   font-size: 0.875rem;
+  animation: fadeInStagger 0.4s var(--easing-smooth, cubic-bezier(.22,.12,.28,1)) backwards;
+  animation-delay: 0.3s;
 }
 
 .panel-meta > div {
@@ -338,6 +405,19 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  animation: fadeInStagger 0.4s var(--easing-smooth, cubic-bezier(.22,.12,.28,1)) backwards;
+  animation-delay: 0.4s;
+}
+
+@keyframes fadeInStagger {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .btn {
@@ -400,5 +480,52 @@
   .hud-info {
     font-size: 0.75rem;
     padding: 0.375rem 0.75rem;
+  }
+}
+
+/* ==========================================
+   Reduced Motion Support (v1.1)
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all animations */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Specific overrides for fractal elements */
+  .edge-line {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+
+  .fractal-node.new-child {
+    animation: none;
+    opacity: 1;
+  }
+
+  .fractal-node.expanding .node-circle {
+    animation: none;
+  }
+
+  .node-details-panel,
+  .node-details-panel h3,
+  .node-text,
+  .panel-meta,
+  .panel-actions {
+    animation: none;
+  }
+
+  .hud-button:hover {
+    transform: none;
+  }
+
+  .fractal-alert {
+    animation: none;
   }
 }
