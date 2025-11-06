@@ -1,0 +1,447 @@
+/**
+ * ParameterPanel Styles (v1.2)
+ *
+ * Advanced parameter controls with:
+ * - Circular radial dials
+ * - Custom styled sliders
+ * - Color gradient editor
+ * - Toggle switches
+ * - 240ms smooth transitions
+ */
+
+/* ==========================================
+   Panel Container
+   ========================================== */
+
+.parameter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md);
+}
+
+.parameter-panel-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ==========================================
+   Parameter Groups
+   ========================================== */
+
+.parameter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  position: relative;
+}
+
+.parameter-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.parameter-value-display {
+  font-family: var(--font-code);
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-cinematic);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ==========================================
+   Radial Control (Circular Dial)
+   ========================================== */
+
+.radial-control {
+  width: 100px;
+  height: 100px;
+  margin: var(--spacing-md) auto;
+  cursor: grab;
+  position: relative;
+  user-select: none;
+  transition: transform var(--duration-base) var(--easing-fast);
+}
+
+.radial-control:hover {
+  transform: scale(1.05);
+}
+
+.radial-control:active,
+.radial-control-dragging {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+.radial-control:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 50%;
+}
+
+.radial-svg {
+  filter: drop-shadow(0 4px 12px rgba(0, 194, 168, 0.3));
+}
+
+.radial-handle {
+  cursor: pointer;
+  transition: all var(--duration-base) var(--easing-fast);
+}
+
+.radial-control:hover .radial-handle {
+  r: 8;
+  filter: drop-shadow(0 0 8px rgba(0, 194, 168, 0.8));
+}
+
+.radial-control-dragging .radial-handle {
+  r: 10;
+  filter: drop-shadow(0 0 12px rgba(0, 194, 168, 1));
+}
+
+.radial-value {
+  font-family: var(--font-code);
+  pointer-events: none;
+}
+
+/* ==========================================
+   Custom Sliders
+   ========================================== */
+
+.parameter-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--color-surface-dark);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+  transition: background var(--duration-base) var(--easing-fast);
+}
+
+.parameter-slider:hover {
+  background: rgba(11, 18, 32, 0.8);
+}
+
+.parameter-slider:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* Slider thumb - WebKit */
+.parameter-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--fractal-gradient);
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0, 194, 168, 0.4);
+  transition: all var(--duration-base) var(--easing-fast);
+}
+
+.parameter-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: var(--neon-outline);
+}
+
+.parameter-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+/* Slider thumb - Firefox */
+.parameter-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--fractal-gradient);
+  border: none;
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0, 194, 168, 0.4);
+  transition: all var(--duration-base) var(--easing-fast);
+}
+
+.parameter-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: var(--neon-outline);
+}
+
+.parameter-slider::-moz-range-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+/* Slider track fill (pseudo-element approach) */
+.slider-track-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  height: 6px;
+  background: var(--fractal-gradient);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 1;
+  transition: width var(--duration-base) var(--easing-fast);
+}
+
+/* ==========================================
+   Color Gradient Editor
+   ========================================== */
+
+.color-gradient-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.color-gradient-preview {
+  width: 100%;
+  height: 60px;
+  border-radius: var(--radius-sm);
+  border: var(--glass-border);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all var(--duration-base) var(--easing-fast);
+}
+
+.color-gradient-preview:hover {
+  transform: scale(1.02);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), var(--glass-shadow);
+}
+
+.color-stops {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.color-stop {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.color-stop-label {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.color-picker {
+  width: 100%;
+  height: 40px;
+  border: var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-dark);
+  cursor: pointer;
+  transition: all var(--duration-base) var(--easing-fast);
+}
+
+.color-picker:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+.color-picker:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Override default color input styles */
+.color-picker::-webkit-color-swatch-wrapper {
+  padding: 4px;
+}
+
+.color-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: calc(var(--radius-sm) - 4px);
+}
+
+.color-picker::-moz-color-swatch {
+  border: none;
+  border-radius: calc(var(--radius-sm) - 4px);
+}
+
+/* ==========================================
+   Toggle Switch
+   ========================================== */
+
+.parameter-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  cursor: pointer;
+  user-select: none;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-base) var(--easing-fast);
+}
+
+.parameter-toggle-label:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.parameter-checkbox {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--color-surface-dark);
+  border: var(--glass-border);
+  border-radius: 12px;
+  flex-shrink: 0;
+  transition: all var(--duration-base) var(--easing-fast);
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: var(--color-text-dim);
+  border-radius: 50%;
+  transition: all var(--duration-base) var(--easing-spring);
+}
+
+.parameter-checkbox:checked + .toggle-switch {
+  background: var(--fractal-gradient);
+  border-color: var(--color-accent-teal);
+}
+
+.parameter-checkbox:checked + .toggle-switch::after {
+  left: 22px;
+  background: var(--color-white);
+  box-shadow: var(--neon-outline);
+}
+
+.parameter-checkbox:focus-visible + .toggle-switch {
+  box-shadow: var(--focus-ring);
+}
+
+.toggle-text {
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-cinematic);
+}
+
+/* ==========================================
+   Reset Button
+   ========================================== */
+
+.parameter-reset-button {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: rgba(255, 255, 255, 0.05);
+  border: var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  transition: all var(--duration-base) var(--easing-fast);
+}
+
+.parameter-reset-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-cinematic);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+.parameter-reset-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.parameter-reset-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.parameter-reset-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ==========================================
+   Animations
+   ========================================== */
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(0, 194, 168, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(0, 194, 168, 0.8));
+  }
+}
+
+.parameter-slider:active {
+  animation: pulse-glow 1s ease-in-out infinite;
+}
+
+/* ==========================================
+   Responsive Design
+   ========================================== */
+
+@media (max-width: 768px) {
+  .parameter-panel {
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm);
+  }
+
+  .radial-control {
+    width: 80px;
+    height: 80px;
+  }
+
+  .color-stops {
+    flex-direction: column;
+  }
+
+  .color-picker {
+    height: 36px;
+  }
+}
+
+/* ==========================================
+   Reduced Motion Support
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .parameter-slider,
+  .toggle-switch,
+  .toggle-switch::after,
+  .radial-control,
+  .color-gradient-preview,
+  .parameter-reset-button {
+    transition: none !important;
+  }
+
+  .radial-control:hover,
+  .radial-control:active,
+  .radial-control-dragging {
+    transform: none !important;
+  }
+
+  .parameter-slider:active {
+    animation: none !important;
+  }
+}

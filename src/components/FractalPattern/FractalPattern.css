@@ -1,0 +1,92 @@
+/**
+ * FractalPattern Styles (v1.2)
+ *
+ * Decorative fractal SVG patterns with subtle animations.
+ * Used throughout UI for visual interest without distraction.
+ */
+
+/* ==========================================
+   Base Pattern Styles
+   ========================================== */
+
+.fractal-pattern {
+  pointer-events: none;
+  user-select: none;
+  will-change: transform, opacity;
+}
+
+/* ==========================================
+   Pattern Variants
+   ========================================== */
+
+.fractal-pattern-tree {
+  /* Tree pattern specific styles */
+}
+
+.fractal-pattern-mandala {
+  /* Mandala pattern specific styles */
+}
+
+.fractal-pattern-network {
+  /* Network pattern specific styles */
+}
+
+/* ==========================================
+   Animations
+   ========================================== */
+
+.fractal-pattern-animate.fractal-pattern-tree {
+  animation: tree-sway 12s ease-in-out infinite;
+}
+
+@keyframes tree-sway {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(2deg);
+  }
+  75% {
+    transform: rotate(-2deg);
+  }
+}
+
+.fractal-pattern-animate.fractal-pattern-mandala {
+  animation: mandala-spin 30s linear infinite;
+}
+
+@keyframes mandala-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.fractal-pattern-animate.fractal-pattern-network {
+  animation: network-pulse 8s ease-in-out infinite;
+}
+
+@keyframes network-pulse {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+/* ==========================================
+   Reduced Motion Support
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .fractal-pattern-animate {
+    animation: none !important;
+  }
+}

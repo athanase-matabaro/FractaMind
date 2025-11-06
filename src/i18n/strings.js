@@ -11,14 +11,15 @@
 
 export const strings = {
   /**
-   * Hero section
+   * Hero section (v1.2 - Cinematic)
    */
   hero: {
-    title: 'Explore ideas like a fractal',
-    subtitle: 'Turn any text into an interactive, zoomable map of knowledge. Privacy-first — runs on your device.',
-    ctaPrimary: 'Paste text or URL to begin',
-    ctaSecondary: 'See demo',
-    privacyBadge: 'All processing happens locally in your browser — private & offline by default.',
+    betaBadge: 'Beta',
+    title: 'Make recursive art. Animate it. Export it.',
+    subtitle: 'Turn any text into an interactive fractal visualization. Privacy-first — runs entirely on your device.',
+    ctaPrimary: 'Start creating',
+    ctaSecondary: 'Watch demo',
+    privacyBadge: 'All processing happens locally — your data never leaves your device.',
     privacyBadgeAria: 'All processing happens locally in your browser. Your data never leaves your device.',
   },
 

@@ -26,6 +26,7 @@ const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => 
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(null);
   const [showNodeEditor, setShowNodeEditor] = useState(false);
+  const [newChildIds, setNewChildIds] = useState(new Set()); // Track newly created nodes for animation
 
   // Transform state (pan/zoom)
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
@@ -191,6 +192,15 @@ const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => 
         // Reload the node tree to include new children
         if (newChildren.length > 0) {
           await loadNodeTree(nodeId, 0, 2); // Reload with depth 2
+
+          // Track new children for animation
+          const newChildIdSet = new Set(newChildren.map(child => child.id));
+          setNewChildIds(newChildIdSet);
+
+          // Clear animation classes after animation completes (500ms + max stagger delay 420ms)
+          setTimeout(() => {
+            setNewChildIds(new Set());
+          }, 1000);
 
           // Record expand interaction
           const expandedNode = await getNode(nodeId);
@@ -458,11 +468,12 @@ const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => 
           const visuals = getNodeVisuals(node);
           const isSelected = nodeId === selectedNodeId;
           const isExpanding = nodeId === expandingNodeId;
+          const isNewChild = newChildIds.has(nodeId);
 
           return (
             <div
               key={nodeId}
-              className={`fractal-node ${isSelected ? 'selected' : ''} ${isExpanding ? 'expanding' : ''}`}
+              className={`fractal-node ${isSelected ? 'selected' : ''} ${isExpanding ? 'expanding' : ''} ${isNewChild ? 'new-child' : ''}`}
               style={{
                 left: `calc(50% + ${pos.x}px)`,
                 top: `calc(50% + ${pos.y}px)`,

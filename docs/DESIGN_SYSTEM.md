@@ -1,8 +1,8 @@
 # FractaMind Design System
 
-**Version**: 1.0.0
-**Date**: 2025-10-29
-**Status**: Implementation Complete
+**Version**: 1.1.0
+**Date**: 2025-11-06
+**Status**: Enhanced with Next-Level Animations
 
 ---
 
@@ -165,6 +165,54 @@ animation-duration: var(--motion-normal);
 animation-timing-function: var(--motion-ease-spring);
 ```
 
+#### 4a. Enhanced Animation Tokens (v1.1)
+
+**NEW in v1.1**: Refined animation tokens for next-level Hero and OnboardPopover animations.
+
+**Durations** (CSS custom properties):
+```css
+--duration-short: 180ms;    /* Quick transitions (hover, active states) */
+--duration-base: 320ms;     /* Standard transitions (buttons, modals) */
+--duration-long: 600ms;     /* Page load animations, major state changes */
+```
+
+**Easing Functions**:
+```css
+--easing-fast: cubic-bezier(.2, .9, .3, 1);       /* Snappy, energetic (buttons) */
+--easing-smooth: cubic-bezier(.22, .12, .28, 1);  /* Calm, elegant (page load) */
+```
+
+**When to Use**:
+- **Short (180ms)**: Button active states, tooltip appearances
+- **Base (320ms)**: Button hovers, form field focus, dropdown animations
+- **Long (600ms)**: Fade-ins on page load, modal open/close, major layout shifts
+- **Fast easing**: Hover effects, active states, quick feedback
+- **Smooth easing**: Fade-ins, slide-ins, major transitions
+
+**New Design Tokens**:
+```css
+/* Enhanced gradient colors */
+--twilight-1: #667eea;      /* Gradient start (soft indigo) */
+--twilight-2: #764ba2;      /* Gradient end (deep purple) */
+--accent: #8ad3ff;          /* Accent color for links/highlights */
+--muted: #cbd5e1;           /* Muted text on dark backgrounds */
+
+/* Radial background gradient */
+--bg-radial: radial-gradient(
+  1200px 600px at 20% 10%,
+  rgba(255,255,255,0.02),
+  transparent 12%
+), linear-gradient(180deg, var(--twilight-1), var(--twilight-2));
+
+/* Glass morphism effects */
+--glass-bg: rgba(255,255,255,0.04);   /* Glass morphism base */
+--card-bg: rgba(255,255,255,0.06);    /* Card background on dark */
+
+/* Focus and shadows */
+--focus-ring: 0 0 0 4px rgba(122, 107, 255, 0.18);  /* Accessible focus indicator */
+--node-glow: 0 8px 30px rgba(118,75,162,0.18);      /* Node shadow effect */
+```
+
 #### 5. Border Radius
 
 ```javascript
@@ -220,11 +268,12 @@ zIndex.toast = 800
 
 **Location**: [src/components/Hero/](../src/components/Hero/)
 
-**Purpose**: Full-bleed hero section with twilight gradient background.
+**Purpose**: Full-bleed hero section with twilight gradient background and animated SeedFractal overlay.
 
 **Anatomy**:
-- Left: Headline + subhead + CTAs + privacy badge
-- Right: Animated FractalSeed preview
+- Background: Radial gradient with animated SeedFractal at 12% opacity
+- Left: Headline + subhead + CTAs + privacy badge (with fade-in animations)
+- Right: Animated FractalSeed preview with floating effect
 
 **Props**:
 ```typescript
@@ -244,16 +293,48 @@ interface HeroProps {
 />
 ```
 
+**Animations (NEW in v1.1)**:
+1. **Staggered Fade-in on Load**:
+   - Title: opacity 0→1, translateY(20px)→0, delay 0ms
+   - Subtitle: opacity 0→1, translateY(20px)→0, delay 100ms
+   - Privacy badge: opacity 0→1, translateY(10px)→0, delay 200ms
+   - All use `--duration-long` (600ms) with `--easing-smooth`
+
+2. **Primary CTA Hover Effect**:
+   ```css
+   transform: translateY(-3px) scale(1.01);
+   box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.2);
+   transition: all var(--duration-base) var(--easing-fast);
+   ```
+
+3. **Primary CTA Active State**:
+   ```css
+   transform: translateY(-1px) scale(1);
+   transition-duration: var(--duration-short);
+   ```
+
+4. **SeedFractal Background**:
+   - Gentle pulse animation (6s loop, scale 0.98 → 1.02)
+   - Staggered ring rotations (12s, 18s, 24s)
+   - Breathing radial glow effect
+
 **Responsive Behavior**:
-- Desktop (1024px+): 60vh height, side-by-side layout
-- Tablet (640-1023px): 50vh height, stacked layout
-- Mobile (<640px): 45vh height, visual above content
+- Desktop (1024px+): 60vh height, side-by-side layout, full-size SeedFractal
+- Tablet (640-1023px): 50vh height, stacked layout, scaled SeedFractal (0.8x)
+- Mobile (<640px): 45vh height, visual above content, scaled SeedFractal (0.6x)
+
+**Typography**:
+- Hero title uses responsive `clamp(28px, 4.4vw, 48px)` for fluid sizing
+- Line-height: 1.02 for tight, impactful headlines
+- Text shadow: `0 2px 8px rgba(0, 0, 0, 0.2)` for depth
 
 **Accessibility**:
 - `role="banner"` on hero section
 - `aria-labelledby` referencing hero title
 - All CTAs have accessible names
-- Privacy badge has `aria-label` for screen readers
+- Privacy badge has both visual text and `aria-label` for screen readers
+- Custom focus ring using `--focus-ring` token (visible and 4.5:1 contrast)
+- All animations disabled when `prefers-reduced-motion: reduce`
 
 #### 2. FractalSeed
 
@@ -294,14 +375,83 @@ interface FractalSeedProps {
 - `aria-live="polite"` for state announcements
 - Screen reader text: "Fractal seed idle" → "growing" → "ready"
 
+#### 2a. SeedFractal (NEW in v1.1)
+
+**Location**: [src/components/Hero/SeedFractal.jsx](../src/components/Hero/)
+
+**Purpose**: Decorative animated SVG background for Hero section with concentric rings and nodes.
+
+**Props**:
+```typescript
+interface SeedFractalProps {
+  opacity?: number;  // Default: 0.15
+}
+```
+
+**Structure**:
+- Central radial gradient glow
+- Three concentric rings with nodes:
+  - Inner ring: 3 nodes (120° apart)
+  - Middle ring: 5 nodes (72° apart)
+  - Outer ring: 8 nodes (45° apart)
+- Connecting lines between nodes
+
+**Animations**:
+1. **Pulse Animation** (6s infinite loop):
+   ```css
+   @keyframes seed-pulse {
+     0%, 100% {
+       transform: scale(0.98);
+       opacity: var(--seed-opacity);
+     }
+     50% {
+       transform: scale(1.02);
+       opacity: calc(var(--seed-opacity) * 1.3);
+     }
+   }
+   ```
+
+2. **Ring Rotations** (staggered, infinite):
+   - Inner ring: 12s clockwise rotation
+   - Middle ring: 18s counter-clockwise rotation
+   - Outer ring: 24s clockwise rotation
+
+3. **Glow Effect** (4s breathing animation):
+   ```css
+   @keyframes glow-breathe {
+     0%, 100% { opacity: 0.6; }
+     50% { opacity: 1; }
+   }
+   ```
+
+**Performance**:
+- `will-change: transform, opacity` for GPU acceleration
+- Only animates `transform` and `opacity` (no layout triggers)
+- `pointer-events: none` to avoid interaction overhead
+- Respects `prefers-reduced-motion: reduce` (all animations disabled)
+
+**Usage**:
+```jsx
+<SeedFractal opacity={0.12} />
+```
+
+**Styling**:
+- Position: `absolute` (overlays background)
+- Z-index: Behind content, within hero-background
+- Decorative only: `aria-hidden="true"`
+
 #### 3. OnboardPopover
 
 **Location**: [src/components/OnboardPopover/](../src/components/OnboardPopover/)
 
-**Purpose**: Modal dialog for document import and onboarding flow.
+**Purpose**: Modal dialog for document import and onboarding flow with enhanced accessibility.
 
 **Features**:
 - Textarea for pasting content
+- **NEW in v1.1**: Floating label pattern
+- **NEW in v1.1**: Helper chips for contextual examples
+- **NEW in v1.1**: Keyboard shortcut (Ctrl+Enter to submit)
+- **NEW in v1.1**: aria-live announcements for progress
 - ExamplesCarousel for quick-start samples
 - ToneSelector for personalization
 - Demo mode with mock processing
@@ -317,6 +467,50 @@ interface OnboardPopoverProps {
   onImport?: (text: string, options: ImportOptions) => Promise<ImportResult>;
 }
 ```
+
+**NEW Features in v1.1**:
+
+1. **Floating Label Pattern**:
+   - Label positioned inside textarea by default
+   - Smoothly transitions to top when focused or filled
+   - Uses `--duration-base` (320ms) with `--easing-smooth`
+   ```css
+   /* Default */
+   .onboard-label {
+     top: var(--spacing-md);
+     left: var(--spacing-md);
+   }
+   /* Floating state */
+   .onboard-label-floating {
+     top: -10px;
+     left: 12px;
+     font-size: var(--font-size-small);
+     color: var(--color-accent);
+   }
+   ```
+
+2. **Helper Chips**:
+   - Displayed when textarea is empty
+   - Contextual suggestions: "Paste an article", "URL", "Notes"
+   - Fade out when user starts typing
+   - Pill-shaped with subtle background
+
+3. **Keyboard Shortcut**:
+   - `Ctrl+Enter` (Windows/Linux) or `Cmd+Enter` (Mac) to submit
+   - Visual hint displayed below textarea
+   - Uses semantic `<kbd>` elements for keyboard keys
+   - Screen reader accessible
+
+4. **aria-live Announcements**:
+   - Progress: "Analyzing document — this may take up to 2 minutes. All processing happens locally."
+   - Success: "Analysis complete — fractal ready."
+   - Fallback: "AI not reachable — using local demo summary to continue."
+   - Updates announced via `aria-live="polite"` region
+
+5. **Enhanced Backdrop Blur**:
+   - Default: `backdrop-filter: blur(4px)`
+   - When processing: `backdrop-filter: blur(8px)` (intensifies)
+   - Smooth transition for visual feedback
 
 **Processing Flow**:
 1. Analyzing document... (800ms)
@@ -335,13 +529,18 @@ interface OnboardPopoverProps {
 />
 ```
 
-**Accessibility**:
+**Accessibility (Enhanced in v1.1)**:
 - `role="dialog"` with `aria-modal="true"`
 - `aria-labelledby` referencing dialog title
+- `aria-describedby` linking textarea to helper, keyboard hint, and privacy hint
+- **NEW**: `aria-live="polite"` region for progress announcements
+- **NEW**: Keyboard shortcut (`Ctrl+Enter`) with visual hint
+- **NEW**: Screen reader-friendly `<kbd>` elements
 - Escape key to close
 - Backdrop click to close
 - Focus trap within modal
 - Auto-focus textarea on open
+- Privacy messaging: "All processing happens locally in your browser"
 
 #### 4. ToneSelector
 
@@ -718,6 +917,21 @@ npm run test:axe
 
 ## Changelog
 
+### Version 1.1.0 (2025-11-06)
+- **Enhanced Animation Tokens**: New `--duration-short/base/long` and `--easing-fast/smooth` CSS custom properties
+- **New Design Tokens**: `--twilight-1/2`, `--accent`, `--muted`, `--bg-radial`, `--glass-bg`, `--card-bg`, `--focus-ring`, `--node-glow`
+- **SeedFractal Component**: New decorative animated SVG background for Hero with pulse, ring rotations, and glow effects
+- **Hero Enhancements**: Staggered fade-in animations, improved CTA hover effects, responsive typography with `clamp()`
+- **OnboardPopover Enhancements**:
+  - Floating label pattern
+  - Helper chips for contextual suggestions
+  - Keyboard shortcut (Ctrl+Enter)
+  - aria-live announcements for progress
+  - Enhanced backdrop blur intensity
+- **Accessibility**: Custom focus rings, improved screen reader support, comprehensive reduced-motion support
+- **Performance**: GPU-accelerated animations, only transform/opacity transitions
+- **Documentation**: Updated with v1.1 features and animation guidelines
+
 ### Version 1.0.0 (2025-10-29)
 - Initial release
 - Design tokens system (colors, typography, spacing, motion)
@@ -730,4 +944,4 @@ npm run test:axe
 ---
 
 **Maintained by**: FractaMind Team
-**Last Updated**: 2025-10-29
+**Last Updated**: 2025-11-06
