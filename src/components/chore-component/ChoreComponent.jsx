@@ -12,9 +12,10 @@ import './ChoreComponent.css';
  * @param {boolean} props.autoShow - If true, modal opens on mount (default: false)
  * @param {Function} props.onSuccess - Callback when import succeeds (optional)
  * @param {Function} props.onOpenFractalView - Callback to navigate to fractal view (optional)
- * @param {boolean} props.hasImportedProject - Whether a project has been imported (optional)
+ * @param {boolean} props.hasImportedProject - Whether a project has been imported (reserved for future use)
  */
-const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess, onOpenFractalView, hasImportedProject = false }) => {
+// eslint-disable-next-line no-unused-vars
+const ChoreComponent = ({ onSeedSubmit, autoShow = false, onSuccess, onOpenFractalView, hasImportedProject: _hasImportedProject = false }) => {
   // 🔴 TIMEOUT FIX LOADED
   console.log('%c🔴 CHORE COMPONENT LOADED - TIMEOUT FIX v2.0', 'background: red; color: white; padding: 4px; font-weight: bold');
 

@@ -12,7 +12,7 @@
  * 5. Persist to IndexedDB (persistProject)
  */
 
-import { summarizeDocument, generateEmbedding, batchGenerateEmbeddings, checkAIAvailability } from '../ai/chromeAI.js';
+import { summarizeDocument, batchGenerateEmbeddings, checkAIAvailability } from '../ai/chromeAI.js';
 import { mockSummarize, mockEmbeddingFromText } from '../ai/mockHelpers.js';
 import {
   initDB,
@@ -73,6 +73,16 @@ async function withWatchdog(promise, timeoutMs, fallbackValue, operationName) {
  * @returns {Promise<{project: Object, rootNode: Object, nodes: Array}>}
  */
 export async function handleSeedSubmit(text, projectMeta = {}, onProgress = null) {
+  // Validate inputs
+  if (!text || typeof text !== 'string') {
+    throw new Error('Invalid text input: must be a non-empty string');
+  }
+
+  if (onProgress !== null && typeof onProgress !== 'function') {
+    console.error('[IMPORTER] Invalid onProgress callback:', typeof onProgress, onProgress);
+    throw new Error(`Invalid onProgress callback: expected function, got ${typeof onProgress}`);
+  }
+
   try {
     // Ensure IndexedDB is initialized
     console.log('🔵 [IMPORTER] handleSeedSubmit START - initializing DB...');

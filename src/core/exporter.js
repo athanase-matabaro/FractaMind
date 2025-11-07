@@ -86,7 +86,8 @@ export async function exportProjectJSON(projectId, options = {}) {
     // Optionally strip embeddings to reduce file size
     const exportNodes = includeEmbeddings
       ? nodes
-      : nodes.map(({ embedding, ...node }) => node);
+      // eslint-disable-next-line no-unused-vars
+      : nodes.map(({ embedding: _embedding, ...node }) => node);
 
     // Create export object
     const exportData = {
@@ -329,7 +330,7 @@ export async function exportMarkdownSummary(projectId, options = {}) {
     markdown += `---\n\n`;
 
     // Recursive function to build tree
-    async function buildTree(nodeId, currentDepth, prefix = '') {
+    const buildTree = async (nodeId, currentDepth, prefix = '') => {
       if (currentDepth > depth) return;
 
       const node = await getNode(nodeId);

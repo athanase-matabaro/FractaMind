@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import ChoreComponent from './components/chore-component/ChoreComponent';
+import Hero from './components/Hero/Hero';
 import FractalCanvas from './viz/FractalCanvas';
 import TimelineView from './viz/TimelineView';
 import WorkspaceView from './viz/WorkspaceView';
-import { handleSeedSubmit } from './core/importer';
 import { initMemoryDB, recordInteraction } from './core/memory';
 import { initRegistry } from './core/projectRegistry';
 import { initFederation } from './core/federation';
@@ -12,10 +11,9 @@ import { getNode } from './db/fractamind-indexer';
 import './index.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState('import'); // 'import' | 'fractal' | 'timeline' | 'workspace'
+  const [currentView, setCurrentView] = useState('import');
   const [importedProject, setImportedProject] = useState(null);
 
-  // Initialize databases on app load
   useEffect(() => {
     Promise.all([
       initMemoryDB(),
@@ -26,50 +24,27 @@ function App() {
     });
   }, []);
 
-  const onSeedSubmit = async (seedText, onProgress) => {
-    console.log('Seed text submitted:', seedText.slice(0, 100) + '...');
-
-    // Call the import pipeline with progress callback
-    const result = await handleSeedSubmit(
-      seedText,
-      {
-        name: 'Imported Document',
-        sourceUrl: null,
-      },
-      onProgress
-    );
-
-    console.log('Import complete:', {
-      projectId: result.project.id,
-      nodeCount: result.nodes.length,
-      rootNode: result.rootNode.title,
+  // Track view changes
+  useEffect(() => {
+    console.log(`%c🔄 VIEW CHANGED: ${currentView}`, 'background: teal; color: white; padding: 4px; font-weight: bold', {
+      hasImportedProject: !!importedProject,
+      projectId: importedProject?.project?.id,
     });
+  }, [currentView, importedProject]);
 
-    // Record import interaction
-    await recordInteraction({
-      nodeId: result.rootNode.id,
-      actionType: 'import',
-      meta: {
-        source: 'text-paste',
-        nodeCount: result.nodes.length,
-        projectName: result.project.name,
-      },
-    }).catch(err => console.error('Failed to record import interaction:', err));
-
+  const handleStartImport = (result) => {
+    console.log('%c📊 IMPORT COMPLETE - Switching to Fractal View', 'background: purple; color: white; padding: 4px; font-weight: bold', {
+      projectId: result?.project?.id,
+      rootNodeId: result?.rootNode?.id,
+      nodeCount: result?.nodes?.length,
+      hasQuantParams: !!result?.project?.meta?.quantParams,
+    });
     setImportedProject(result);
-    return result;
+    setCurrentView('fractal');
   };
 
-  const handleSuccess = (result) => {
-    console.log('Import succeeded! Project ready to visualize.');
-    // Store project data for fractal view
-    setImportedProject(result);
-  };
-
-  const handleOpenFractalView = () => {
-    if (importedProject) {
-      setCurrentView('fractal');
-    }
+  const handleDemoStart = () => {
+    console.log('Demo mode requested');
   };
 
   const handleBackToImport = () => {
@@ -78,8 +53,6 @@ function App() {
 
   const handleNodeSelect = (node) => {
     console.log('Node selected:', node.id, node.title);
-
-    // Record view interaction
     recordInteraction({
       nodeId: node.id,
       actionType: 'view',
@@ -96,11 +69,7 @@ function App() {
 
   const handleTimelineItemClick = async (interaction) => {
     if (interaction.nodeId && importedProject) {
-      // Switch to fractal view
       setCurrentView('fractal');
-
-      // The FractalCanvas will handle centering the node
-      // We'll pass the nodeId as a prop
     }
   };
 
@@ -109,13 +78,10 @@ function App() {
   };
 
   const handleWorkspaceNodeClick = async ({ nodeId, projectId }) => {
-    // Load the project if not currently loaded
     if (!importedProject || importedProject.project.id !== projectId) {
       try {
         const node = await getNode(nodeId);
         if (node) {
-          // For now, just switch to fractal view with the current project
-          // TODO: Implement full project switching
           console.log('Workspace node clicked:', { nodeId, projectId });
           setCurrentView('fractal');
         }
@@ -130,81 +96,41 @@ function App() {
   return (
     <div className="app">
       {currentView === 'import' && (
-        <>
-          <ChoreComponent
-            onSeedSubmit={onSeedSubmit}
-            onSuccess={handleSuccess}
-            onOpenFractalView={handleOpenFractalView}
-            hasImportedProject={!!importedProject}
-          />
-
-          {/* Success summary (shown after import, before switching to fractal view) */}
-          {importedProject && (
-            <div
-              style={{
-                padding: '2rem',
-                maxWidth: '800px',
-                margin: '2rem auto',
-                background: '#f9fafb',
-                borderRadius: '8px',
-              }}
-            >
-              <h2>Import Successful!</h2>
-              <p>
-                <strong>Project:</strong> {importedProject.project.name}
-              </p>
-              <p>
-                <strong>Root Node:</strong> {importedProject.rootNode.title}
-              </p>
-              <p>
-                <strong>Nodes Created:</strong> {importedProject.nodes.length}
-              </p>
-              <button
-                onClick={handleOpenFractalView}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  background: '#667eea',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  marginTop: '1rem',
-                }}
-              >
-                Open Fractal View
-              </button>
-              <details style={{ marginTop: '1rem' }}>
-                <summary>View Nodes</summary>
-                <ul>
-                  {importedProject.nodes.map((node) => (
-                    <li key={node.id}>
-                      <strong>{node.title}</strong>
-                      <br />
-                      {node.text.slice(0, 100)}...
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            </div>
-          )}
-        </>
+        <Hero
+          onStartImport={handleStartImport}
+          onDemoStart={handleDemoStart}
+          demoMode={false}
+        />
       )}
 
       {currentView === 'fractal' && importedProject && (
         <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 100, display: 'flex', gap: '0.5rem' }}>
+          <div style={{ position: 'absolute', top: '5rem', right: '1rem', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <button
               onClick={handleBackToImport}
               style={{
-                padding: '0.5rem 1rem',
-                background: 'white',
-                border: '2px solid #667eea',
+                padding: '0.625rem 1.25rem',
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontWeight: 600,
-                color: '#667eea',
+                fontWeight: 500,
+                color: 'rgba(255, 255, 255, 0.8)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.target.style.borderColor = '#667eea';
+                e.target.style.color = 'white';
+                e.target.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.target.style.color = 'rgba(255, 255, 255, 0.8)';
+                e.target.style.boxShadow = 'none';
               }}
             >
               ← Back to Import
@@ -212,13 +138,28 @@ function App() {
             <button
               onClick={handleOpenTimeline}
               style={{
-                padding: '0.5rem 1rem',
-                background: 'white',
-                border: '2px solid #667eea',
+                padding: '0.625rem 1.25rem',
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontWeight: 600,
-                color: '#667eea',
+                fontWeight: 500,
+                color: 'rgba(255, 255, 255, 0.8)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.target.style.borderColor = '#667eea';
+                e.target.style.color = 'white';
+                e.target.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.target.style.color = 'rgba(255, 255, 255, 0.8)';
+                e.target.style.boxShadow = 'none';
               }}
             >
               📅 Timeline
@@ -226,13 +167,28 @@ function App() {
             <button
               onClick={handleOpenWorkspace}
               style={{
-                padding: '0.5rem 1rem',
-                background: 'white',
-                border: '2px solid #667eea',
+                padding: '0.625rem 1.25rem',
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontWeight: 600,
-                color: '#667eea',
+                fontWeight: 500,
+                color: 'rgba(255, 255, 255, 0.8)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.target.style.borderColor = '#667eea';
+                e.target.style.color = 'white';
+                e.target.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.target.style.color = 'rgba(255, 255, 255, 0.8)';
+                e.target.style.boxShadow = 'none';
               }}
             >
               🏢 Workspace

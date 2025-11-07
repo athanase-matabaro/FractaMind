@@ -14,7 +14,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { listProjects, setProjectActive, setProjectWeight, deleteProject, getProjectStats } from '../core/projectRegistry.js';
 import { crossProjectSearch } from '../core/crossSearcher.js';
-import { getFederationStats } from '../core/federation.js';
 import './WorkspaceView.css';
 
 const WorkspaceView = ({ onNodeClick, onClose }) => {

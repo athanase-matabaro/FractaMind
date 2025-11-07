@@ -64,7 +64,8 @@ function generateSnippet(text, maxLength = 140) {
  * @param {Object} options - Search options
  * @returns {Promise<Array>} - Array of matching nodes
  */
-async function substringSearch(queryText, { projectId, topK = 10, subtreeRootId = null }) {
+// eslint-disable-next-line no-unused-vars
+async function substringSearch(queryText, { projectId: _projectId, topK: _topK = 10, subtreeRootId: _subtreeRootId = null }) {
   console.warn('Falling back to substring search (embedding API unavailable)');
 
   // TODO: Implement getAllNodes function in indexer
@@ -79,7 +80,8 @@ async function substringSearch(queryText, { projectId, topK = 10, subtreeRootId 
  * @param {Object} options - Search options
  * @returns {Promise<Array>} - Array of matching nodes with scores
  */
-async function linearScanSearch(queryEmbedding, { projectId, topK = 10, subtreeRootId = null }) {
+// eslint-disable-next-line no-unused-vars
+async function linearScanSearch(queryEmbedding, { projectId: _projectId, topK: _topK = 10, subtreeRootId: _subtreeRootId = null }) {
   console.warn('Falling back to linear scan (no quantParams available)');
 
   // TODO: Implement getAllNodes function in indexer

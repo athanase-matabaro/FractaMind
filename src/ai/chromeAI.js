@@ -121,7 +121,9 @@ export function checkAIAvailability() {
  * @throws {Error} If model is unavailable
  */
 export async function ensureModelReady(apiName, options = {}) {
-  const { onDownloadProgress } = options;
+  // onDownloadProgress option available for future use
+  // eslint-disable-next-line no-unused-vars
+  const { onDownloadProgress: _onDownloadProgress } = options;
 
   // Check if API constructor exists
   if (typeof self === 'undefined' || !(apiName in self)) {
@@ -280,7 +282,7 @@ export async function summarizeDocument(text, options = {}) {
 
       // Use LanguageModel directly (pattern from web-ai-demos)
       console.log('[AI] Creating LanguageModel session...');
-      const sessionPromise = LanguageModel.create(createOptions);
+      const sessionPromise = self.LanguageModel.create(createOptions);
       const session = await timeout(sessionPromise, timeoutMs, 'Summarization session creation timed out');
 
       const prompt = `Summarize the following document into ${maxTopics} distinct subtopics. For each subtopic return:
@@ -424,7 +426,8 @@ export async function generateEmbedding(text, options = {}) {
   const {
     mock = false,
     dims = 512,
-    timeoutMs = DEFAULT_TIMEOUT_MS
+    // eslint-disable-next-line no-unused-vars
+    timeoutMs: _timeoutMs = DEFAULT_TIMEOUT_MS // Reserved for future use when API is available
   } = options;
 
   // Check if user explicitly requested mock mode (from timeout recovery)
@@ -519,7 +522,7 @@ export async function expandNode(nodeText, options = {}) {
       };
 
       console.log('[AI] Creating LanguageModel session for node expansion...');
-      const sessionPromise = LanguageModel.create(createOptions);
+      const sessionPromise = self.LanguageModel.create(createOptions);
       const session = await timeout(sessionPromise, timeoutMs, 'Node expansion session creation timed out');
 
       const prompt = `Given this node, generate ${numChildren} child nodes that expand it. For each child return:
@@ -711,7 +714,7 @@ export async function rewriteText(text, options = {}) {
       };
 
       console.log('[AI] Creating LanguageModel session for rewriting...');
-      const sessionPromise = LanguageModel.create(createOptions);
+      const sessionPromise = self.LanguageModel.create(createOptions);
       const session = await timeout(sessionPromise, timeoutMs, 'Rewrite session creation timed out');
 
       const prompt = instruction

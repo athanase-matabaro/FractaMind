@@ -35,7 +35,6 @@ const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => 
 
   // Refs
   const canvasRef = useRef(null);
-  const animationFrameRef = useRef(null);
 
   /**
    * Load node tree recursively
@@ -45,10 +44,24 @@ const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => 
 
     try {
       const node = await getNode(nodeId);
-      if (!node) return null;
+      if (!node) {
+        console.warn(`[FractalCanvas] Node not found: ${nodeId}`);
+        return null;
+      }
+
+      console.log(`[FractalCanvas] Loaded node at depth ${depth}:`, {
+        id: nodeId,
+        title: node.title,
+        childCount: node.children?.length || 0,
+      });
 
       // Add to nodes map
-      setNodes((prev) => new Map(prev).set(nodeId, node));
+      setNodes((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(nodeId, node);
+        console.log(`[FractalCanvas] Total nodes loaded: ${newMap.size}`);
+        return newMap;
+      });
 
       // Load children recursively
       if (node.children && node.children.length > 0) {
@@ -59,22 +72,45 @@ const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => 
 
       return node;
     } catch (err) {
-      console.error(`Failed to load node ${nodeId}:`, err);
+      console.error(`[FractalCanvas] Failed to load node ${nodeId}:`, err);
       return null;
     }
   }, []);
 
   /**
+   * Component mount tracking
+   */
+  useEffect(() => {
+    console.log('%c✅ FRACTAL CANVAS MOUNTED', 'background: blue; color: white; padding: 4px; font-weight: bold', {
+      projectId,
+      rootNodeId,
+      hasQuantParams: !!quantParams,
+    });
+
+    return () => {
+      console.log('%c❌ FRACTAL CANVAS UNMOUNTED', 'background: orange; color: white; padding: 4px; font-weight: bold');
+    };
+  }, [projectId, rootNodeId, quantParams]);
+
+  /**
    * Initialize: Load project and node tree
    */
   useEffect(() => {
-    if (!rootNodeId) return;
+    if (!rootNodeId) {
+      console.warn('[FractalCanvas] No rootNodeId provided, skipping initialization');
+      return;
+    }
+
+    console.log('[FractalCanvas] Starting initialization...', { rootNodeId });
 
     const init = async () => {
       try {
         setError(null);
+        console.log('[FractalCanvas] Loading node tree...');
         await loadNodeTree(rootNodeId);
+        console.log('[FractalCanvas] Node tree loaded successfully');
       } catch (err) {
+        console.error('[FractalCanvas] Failed to load project:', err);
         setError(`Failed to load project: ${err.message}`);
       }
     };
@@ -341,6 +377,27 @@ const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => 
     };
   }, [handleWheel, handleMouseDown, handleMouseMove, handleMouseUp]);
 
+  // Handle window resize - recenter view to prevent nodes from shifting
+  useEffect(() => {
+    let resizeTimeout;
+    const handleResize = () => {
+      // Debounce to avoid excessive recalculations during resize
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        // Force re-render which recalculates positions
+        // The calc(50%) will now use the new container dimensions
+        setTransform(prev => ({ ...prev }));
+      }, 100);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
+    };
+  }, []);
+
   /**
    * Render canvas
    */
@@ -393,9 +450,10 @@ const FractalCanvas = ({ projectId, rootNodeId, quantParams, onNodeSelect }) => 
   }, [loadNodeTree]);
 
   /**
-   * Handle node click - open editor
+   * Handle node click - open editor (reserved for future use)
    */
-  const handleNodeClickForEditor = useCallback((nodeId) => {
+  // eslint-disable-next-line no-unused-vars
+  const _handleNodeClickForEditor = useCallback((nodeId) => {
     setSelectedNodeId(nodeId);
     setShowNodeEditor(true);
 

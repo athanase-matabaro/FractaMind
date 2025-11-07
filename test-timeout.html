@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Timeout Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    #status {
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    .processing { background: #fef3c7; }
+    .success { background: #d1fae5; color: #065f46; }
+    .error { background: #fee2e2; color: #991b1b; }
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .primary { background: #667eea; color: white; }
+    .secondary { background: #e5e7eb; }
+  </style>
+</head>
+<body>
+  <h1>🔴 Timeout Mechanism Test</h1>
+
+  <div id="status" class="processing">Ready to test</div>
+
+  <button class="primary" onclick="testPromiseRaceTimeout()">
+    Test Promise.race Timeout (5s)
+  </button>
+
+  <button class="secondary" onclick="testWatchdogTimer()">
+    Test Watchdog Timer (7s)
+  </button>
+
+  <button class="secondary" onclick="testNormalSuccess()">
+    Test Normal Success (2s)
+  </button>
+
+  <div id="log" style="margin-top: 20px; padding: 20px; background: #f3f4f6; border-radius: 8px;">
+    <h3>Log:</h3>
+    <div id="logContent" style="font-family: monospace; font-size: 12px;"></div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const logContent = document.getElementById('logContent');
+
+    function log(msg) {
+      const time = new Date().toLocaleTimeString();
+      logContent.innerHTML += `<div>[${time}] ${msg}</div>`;
+      console.log(msg);
+    }
+
+    function updateStatus(msg, className) {
+      statusEl.textContent = msg;
+      statusEl.className = className;
+    }
+
+    // Simulate the hanging operation
+    function hangingOperation() {
+      return new Promise(() => {
+        log('⏳ Started operation that will NEVER resolve...');
+        // Never resolve - simulates the hang
+      });
+    }
+
+    // Simulate successful operation
+    function successOperation() {
+      return new Promise(resolve => {
+        log('✅ Started operation that will succeed in 2s');
+        setTimeout(() => {
+          log('✅ Operation completed successfully');
+          resolve({ success: true });
+        }, 2000);
+      });
+    }
+
+    // TEST 1: Promise.race timeout (what we implemented)
+    async function testPromiseRaceTimeout() {
+      log('\n=== TEST 1: Promise.race Timeout ===');
+      updateStatus('Testing Promise.race timeout...', 'processing');
+
+      const operationPromise = hangingOperation();
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          log('🔴 Timeout fired at 5 seconds');
+          reject(new Error('Operation timed out after 5 seconds'));
+        }, 5000);
+      });
+
+      try {
+        log('Racing promises...');
+        await Promise.race([operationPromise, timeoutPromise]);
+      } catch (err) {
+        log('❌ Caught error: ' + err.message);
+        updateStatus('✅ TEST PASSED: Timeout caught the hang!', 'success');
+      }
+    }
+
+    // TEST 2: Watchdog timer with ref (what we also implemented)
+    let isProcessing = false;
+    let watchdogTimer = null;
+
+    async function testWatchdogTimer() {
+      log('\n=== TEST 2: Watchdog Timer ===');
+      updateStatus('Testing watchdog timer...', 'processing');
+      isProcessing = true;
+
+      // Set watchdog
+      watchdogTimer = setTimeout(() => {
+        log('🔴 Watchdog timer fired at 7 seconds');
+        if (isProcessing) {
+          log('🚨 EMERGENCY STOP: Forcing recovery');
+          isProcessing = false;
+          updateStatus('✅ TEST PASSED: Watchdog stopped the hang!', 'success');
+        }
+      }, 7000);
+
+      try {
+        log('Starting hanging operation...');
+        await hangingOperation();
+      } catch (err) {
+        log('❌ Error: ' + err.message);
+      }
+    }
+
+    // TEST 3: Normal success path
+    async function testNormalSuccess() {
+      log('\n=== TEST 3: Normal Success ===');
+      updateStatus('Testing normal success...', 'processing');
+
+      const operationPromise = successOperation();
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          log('🔴 Timeout would fire here (10s)');
+          reject(new Error('Timeout'));
+        }, 10000);
+      });
+
+      try {
+        log('Racing operation vs timeout...');
+        const result = await Promise.race([operationPromise, timeoutPromise]);
+        log('✅ Operation won the race!');
+        updateStatus('✅ TEST PASSED: Success before timeout!', 'success');
+      } catch (err) {
+        log('❌ Error: ' + err.message);
+        updateStatus('❌ TEST FAILED: Timeout fired incorrectly', 'error');
+      }
+    }
+
+    log('🔴 Timeout test page loaded');
+    log('Click a button to test different scenarios');
+  </script>
+</body>
+</html>

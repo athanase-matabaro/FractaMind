@@ -110,6 +110,21 @@ const SearchHUD = ({ projectId, quantParams, onResultSelect, disabled = false })
     [performSearch]
   );
 
+  // Handle result selection
+  const handleResultClick = useCallback(
+    (result) => {
+      console.log('Search result selected:', result.nodeId, result.title);
+      onResultSelect?.(result);
+
+      // Clear search
+      setQuery('');
+      setResults([]);
+      setSelectedIndex(-1);
+      setIsExpanded(false);
+    },
+    [onResultSelect]
+  );
+
   // Handle keyboard navigation in results
   const handleKeyDown = useCallback(
     (e) => {
@@ -132,22 +147,7 @@ const SearchHUD = ({ projectId, quantParams, onResultSelect, disabled = false })
         inputRef.current?.blur();
       }
     },
-    [results, selectedIndex]
-  );
-
-  // Handle result selection
-  const handleResultClick = useCallback(
-    (result) => {
-      console.log('Search result selected:', result.nodeId, result.title);
-      onResultSelect?.(result);
-
-      // Clear search
-      setQuery('');
-      setResults([]);
-      setSelectedIndex(-1);
-      setIsExpanded(false);
-    },
-    [onResultSelect]
+    [results, selectedIndex, handleResultClick]
   );
 
   // Scroll selected result into view
@@ -223,7 +223,7 @@ const SearchHUD = ({ projectId, quantParams, onResultSelect, disabled = false })
 
           {!error && query && !isSearching && results.length === 0 && (
             <div className="search-hud-no-results">
-              <p>No results found for "{query}"</p>
+              <p>No results found for &ldquo;{query}&rdquo;</p>
               <p className="search-hud-hint">
                 Try different keywords or check if the project has been indexed.
               </p>

@@ -90,16 +90,6 @@ const ParameterPanel = ({ parameters = {}, onChange, disabled = false }) => {
     }
   }, [isDraggingRadial, handleRadialMouseMove, handleRadialMouseUp]);
 
-  /**
-   * Convert angle to SVG path coordinates
-   */
-  const getRadialPath = (angle, radius = 40) => {
-    const rad = ((angle - 90) * Math.PI) / 180;
-    const x = 50 + radius * Math.cos(rad);
-    const y = 50 + radius * Math.sin(rad);
-    return `M 50 50 L ${x} ${y}`;
-  };
-
   return (
     <div className={`parameter-panel ${disabled ? 'parameter-panel-disabled' : ''}`}>
       {/* Angle Control - Radial Dial */}

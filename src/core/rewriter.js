@@ -14,7 +14,6 @@ import { rewriteText, generateEmbedding } from '../ai/chromeAI.js';
 import {
   getNode,
   saveNode,
-  computeQuantizationParams,
   computeMortonKeyFromEmbedding,
 } from '../db/fractamind-indexer.js';
 
@@ -206,10 +205,11 @@ export async function acceptRewrite(nodeId, newText, options = {}) {
  * Reject a rewrite suggestion (no action taken)
  *
  * @param {string} nodeId - Node ID
- * @param {string} suggestion - Rejected suggestion
+ * @param {string} _suggestion - Rejected suggestion (reserved for future analytics)
  * @returns {Promise<void>}
  */
-export async function rejectRewrite(nodeId, suggestion) {
+// eslint-disable-next-line no-unused-vars
+export async function rejectRewrite(nodeId, _suggestion) {
   console.log(`Rewrite suggestion rejected for node ${nodeId}`);
   // Could optionally log rejection for analytics
   // For now, just a no-op

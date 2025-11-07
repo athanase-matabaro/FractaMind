@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import FractalSeed from '../FractalSeed/FractalSeed';
 import SeedFractal from './SeedFractal';
 import OnboardPopover from '../OnboardPopover/OnboardPopover';
+import { handleSeedSubmit } from '../../core/importer';
+import { recordInteraction } from '../../core/memory';
 import { strings } from '../../i18n/strings';
 import './Hero.css';
 
@@ -61,20 +63,58 @@ const Hero = ({ onStartImport, onDemoStart, demoMode = true }) => {
 
   /**
    * Handle popover close
+   * Memoized to prevent OnboardPopover from remounting on every Hero render
    */
-  const handlePopoverClose = () => {
+  const handlePopoverClose = useCallback(() => {
     setIsPopoverOpen(false);
-  };
+  }, []);
+
+  /**
+   * Handle import - call the actual import pipeline
+   * Memoized to prevent OnboardPopover from remounting on every Hero render
+   */
+  const handleImport = useCallback(async (seedText, options = {}) => {
+    console.log('Hero: Starting import with seed text...', { options });
+
+    const result = await handleSeedSubmit(
+      seedText,
+      {
+        name: 'Imported Document',
+        sourceUrl: null,
+      },
+      options.onProgress || null
+    );
+
+    console.log('Hero: Import complete:', {
+      projectId: result.project.id,
+      nodeCount: result.nodes.length,
+      rootNode: result.rootNode.title,
+    });
+
+    // Record import interaction
+    await recordInteraction({
+      nodeId: result.rootNode.id,
+      actionType: 'import',
+      meta: {
+        source: 'text-paste',
+        nodeCount: result.nodes.length,
+        projectName: result.project.name,
+      },
+    }).catch(err => console.error('Failed to record import interaction:', err));
+
+    return result;
+  }, []);
 
   /**
    * Handle successful import from popover
+   * Memoized to prevent OnboardPopover from remounting on every Hero render
    */
-  const handleImportSuccess = (result) => {
+  const handleImportSuccess = useCallback((result) => {
     setIsPopoverOpen(false);
     if (onStartImport) {
       onStartImport(result);
     }
-  };
+  }, [onStartImport]);
 
   return (
     <section
@@ -175,6 +215,7 @@ const Hero = ({ onStartImport, onDemoStart, demoMode = true }) => {
           isOpen={isPopoverOpen}
           onClose={handlePopoverClose}
           onSuccess={handleImportSuccess}
+          onImport={handleImport}
           demoMode={demoMode}
         />
       )}
