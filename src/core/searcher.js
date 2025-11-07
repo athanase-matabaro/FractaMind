@@ -288,3 +288,39 @@ export async function getOrCreateQuantParams(projectId, sampleEmbeddings = null)
   console.error('No quantParams found and no sample embeddings provided');
   return null;
 }
+/**
+ * Phase 6: Compute similarity score between two nodes
+ * Used for link confidence calculation and contextualization
+ *
+ * @param {string} nodeIdA - First node ID
+ * @param {string} nodeIdB - Second node ID
+ * @returns {Promise<number>} - Cosine similarity score [0, 1] (normalized to positive range)
+ */
+export async function scorePair(nodeIdA, nodeIdB) {
+  try {
+    const [nodeA, nodeB] = await Promise.all([getNode(nodeIdA), getNode(nodeIdB)]);
+
+    if (!nodeA || !nodeB || !nodeA.embedding || !nodeB.embedding) {
+      console.warn(`[SEARCHER] Cannot score pair: missing nodes or embeddings`);
+      return 0;
+    }
+
+    const embA = Array.isArray(nodeA.embedding) ? nodeA.embedding : Array.from(nodeA.embedding);
+    const embB = Array.isArray(nodeB.embedding) ? nodeB.embedding : Array.from(nodeB.embedding);
+
+    const rawSim = cosineSimilarity(embA, embB);
+
+    // Normalize from [-1, 1] to [0, 1] for confidence scoring
+    const normalizedSim = (rawSim + 1) / 2;
+
+    return normalizedSim;
+  } catch (error) {
+    console.error(`[SEARCHER] Error scoring pair (${nodeIdA}, ${nodeIdB}):`, error);
+    return 0;
+  }
+}
+
+/**
+ * Phase 6: Export utility functions for use in contextualizer
+ */
+export { cosineSimilarity, generateSnippet };

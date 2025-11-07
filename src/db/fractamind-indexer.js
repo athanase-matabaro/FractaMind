@@ -1,5 +1,6 @@
 /* fractamind-indexer.js
    Minimal IndexedDB wrapper + Morton (Z-order) key generator for embeddings.
+   Phase 6: Added links store for semantic relationships between nodes.
 
    Usage:
      await initDB();
@@ -7,15 +8,20 @@
      const mortonKeyHex = computeMortonKeyFromEmbedding(vec, quantParams);
      await saveNode({ id, title, text, embedding: vec, hilbertKeyHex: mortonKeyHex, meta });
      const hits = await rangeScanByMortonHex(mortonKeyHex, radiusHex, { limit: 200 });
+     
+     // Phase 6 - Links
+     await saveLink({ linkId, sourceNodeId, targetNodeId, relationType, confidence, ... });
+     const links = await queryLinks({ sourceNodeId: 'node-1' });
 */
 
 /////////////////////////
 // CONFIG / CONSTANTS //
 /////////////////////////
 const DB_NAME = 'fractamind-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Phase 6: Incremented for links store
 const STORE_NODES = 'nodes';
 const STORE_MORTON = 'mortonIndex'; // maps mortonHex -> nodeId (multiple entries allowed per key)
+const STORE_LINKS = 'links'; // Phase 6: Semantic links between nodes
 const EPS = 1e-9;
 
 /////////////////////////
@@ -26,14 +32,40 @@ function openIndexedDB() {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = (ev) => {
       const db = ev.target.result;
-      if (!db.objectStoreNames.contains(STORE_NODES)) {
-        const nodesStore = db.createObjectStore(STORE_NODES, { keyPath: 'id' });
-        nodesStore.createIndex('byMorton', 'hilbertKeyHex', { unique: false });
+      const oldVersion = ev.oldVersion;
+      
+      // Version 1: Original nodes and morton stores
+      if (oldVersion < 1) {
+        if (!db.objectStoreNames.contains(STORE_NODES)) {
+          const nodesStore = db.createObjectStore(STORE_NODES, { keyPath: 'id' });
+          nodesStore.createIndex('byMorton', 'hilbertKeyHex', { unique: false });
+        }
+        if (!db.objectStoreNames.contains(STORE_MORTON)) {
+          // store entries { mortonHex, nodeId }
+          const mort = db.createObjectStore(STORE_MORTON, { keyPath: ['mortonHex', 'nodeId'] });
+          mort.createIndex('mortonIdx', 'mortonHex', { unique: false });
+        }
       }
-      if (!db.objectStoreNames.contains(STORE_MORTON)) {
-        // store entries { mortonHex, nodeId }
-        const mort = db.createObjectStore(STORE_MORTON, { keyPath: ['mortonHex', 'nodeId'] });
-        mort.createIndex('mortonIdx', 'mortonHex', { unique: false });
+      
+      // Version 2: Phase 6 - Links store
+      if (oldVersion < 2) {
+        if (!db.objectStoreNames.contains(STORE_LINKS)) {
+          // Links store with schema:
+          // { linkId, projectId, sourceNodeId, targetNodeId, relationType, confidence, 
+          //   provenance: {method, aiPrompt, timestamp}, weight, active, createdAt, updatedAt, history }
+          const linksStore = db.createObjectStore(STORE_LINKS, { keyPath: 'linkId' });
+          
+          // Indices for efficient querying
+          linksStore.createIndex('bySource', 'sourceNodeId', { unique: false });
+          linksStore.createIndex('byTarget', 'targetNodeId', { unique: false });
+          linksStore.createIndex('byProjectId', 'projectId', { unique: false });
+          linksStore.createIndex('byRelationType', 'relationType', { unique: false });
+          linksStore.createIndex('byConfidence', 'confidence', { unique: false }); // For sorting by confidence
+          linksStore.createIndex('byActive', 'active', { unique: false });
+          // Compound index for common query patterns
+          linksStore.createIndex('bySourceAndType', ['sourceNodeId', 'relationType'], { unique: false });
+          linksStore.createIndex('byTargetAndType', ['targetNodeId', 'relationType'], { unique: false });
+        }
       }
     };
     req.onsuccess = (ev) => resolve(ev.target.result);
@@ -100,6 +132,164 @@ async function deleteNode(id) {
       tx.onerror = (ev) => reject(ev.target.error);
     })
   );
+}
+
+/////////////////////////
+// Links CRUD (Phase 6)//
+/////////////////////////
+
+/**
+ * Save or update a link
+ * @param {Object} link - Link object with schema defined in STORE_LINKS
+ * @returns {Promise<Object>} Saved link
+ */
+async function saveLink(link) {
+  // Ensure required fields and defaults
+  const now = new Date().toISOString();
+  const linkToSave = {
+    active: true,
+    weight: 1.0,
+    createdAt: now,
+    updatedAt: now,
+    history: [],
+    ...link,
+  };
+  
+  return withDB((db) =>
+    new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_LINKS], 'readwrite');
+      const store = tx.objectStore(STORE_LINKS);
+      store.put(linkToSave);
+      tx.oncomplete = () => resolve(linkToSave);
+      tx.onerror = (ev) => reject(ev.target.error);
+    })
+  );
+}
+
+/**
+ * Get a link by ID
+ * @param {string} linkId 
+ * @returns {Promise<Object|null>} Link or null if not found
+ */
+async function getLink(linkId) {
+  return withDB((db) => promisifyRequest(db.transaction([STORE_LINKS]).objectStore(STORE_LINKS).get(linkId)));
+}
+
+/**
+ * Query links with filters
+ * @param {Object} filters - { sourceNodeId?, targetNodeId?, projectId?, relationType?, active?, limit?, sortBy? }
+ * @returns {Promise<Array>} Array of matching links
+ */
+async function queryLinks(filters = {}) {
+  const { sourceNodeId, targetNodeId, projectId, relationType, active, limit = 100, sortBy = null } = filters;
+  
+  return withDB(async (db) => {
+    const tx = db.transaction([STORE_LINKS]);
+    const store = tx.objectStore(STORE_LINKS);
+    const results = [];
+    
+    // Choose optimal index based on filters
+    let index = null;
+    let range = null;
+    
+    if (sourceNodeId && relationType) {
+      index = store.index('bySourceAndType');
+      range = IDBKeyRange.only([sourceNodeId, relationType]);
+    } else if (targetNodeId && relationType) {
+      index = store.index('byTargetAndType');
+      range = IDBKeyRange.only([targetNodeId, relationType]);
+    } else if (sourceNodeId) {
+      index = store.index('bySource');
+      range = IDBKeyRange.only(sourceNodeId);
+    } else if (targetNodeId) {
+      index = store.index('byTarget');
+      range = IDBKeyRange.only(targetNodeId);
+    } else if (projectId) {
+      index = store.index('byProjectId');
+      range = IDBKeyRange.only(projectId);
+    } else if (relationType) {
+      index = store.index('byRelationType');
+      range = IDBKeyRange.only(relationType);
+    } else if (active !== undefined) {
+      index = store.index('byActive');
+      range = IDBKeyRange.only(active);
+    }
+    
+    const source = index || store;
+    const req = range ? source.openCursor(range) : source.openCursor();
+    
+    await new Promise((resolve, reject) => {
+      req.onsuccess = (ev) => {
+        const cursor = ev.target.result;
+        if (!cursor || results.length >= limit) return resolve();
+        
+        const link = cursor.value;
+        
+        // Apply additional filters not covered by index
+        let match = true;
+        if (projectId && link.projectId !== projectId) match = false;
+        if (active !== undefined && link.active !== active) match = false;
+        
+        if (match) {
+          results.push(link);
+        }
+        
+        cursor.continue();
+      };
+      req.onerror = (ev) => reject(ev.target.error);
+    });
+    
+    // Sort if requested
+    if (sortBy === 'confidence') {
+      results.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+    } else if (sortBy === 'createdAt') {
+      results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+    
+    return results;
+  });
+}
+
+/**
+ * Delete a link
+ * @param {string} linkId 
+ * @returns {Promise<boolean>} Success
+ */
+async function deleteLink(linkId) {
+  return withDB((db) =>
+    new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_LINKS], 'readwrite');
+      tx.objectStore(STORE_LINKS).delete(linkId);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = (ev) => reject(ev.target.error);
+    })
+  );
+}
+
+/**
+ * Get all nodes (useful for batch operations)
+ * @param {number} limit - Maximum nodes to return
+ * @returns {Promise<Array>} Array of nodes
+ */
+async function getAllNodes(limit = 1000) {
+  return withDB(async (db) => {
+    const tx = db.transaction([STORE_NODES]);
+    const store = tx.objectStore(STORE_NODES);
+    const results = [];
+    
+    const req = store.openCursor();
+    await new Promise((resolve, reject) => {
+      req.onsuccess = (ev) => {
+        const cursor = ev.target.result;
+        if (!cursor || results.length >= limit) return resolve();
+        results.push(cursor.value);
+        cursor.continue();
+      };
+      req.onerror = (ev) => reject(ev.target.error);
+    });
+    
+    return results;
+  });
 }
 
 /////////////////////////
@@ -285,47 +475,6 @@ async function initDB() {
 }
 
 /////////////////////////
-// EXAMPLES / USAGE    //
-/////////////////////////
-
-/* Example usage:
-(async () => {
-  await initDB();
-
-  // Suppose you have sample embeddings to compute quant params:
-  const sampleEmbeddings = [
-    // each is an Array<number>
-    [0.12, -0.32, 0.47, ...],
-    ...
-  ];
-  const quantParams = computeQuantizationParams(sampleEmbeddings, { reducedDims: 8, bits: 16, reduction: 'first' });
-
-  // For a new node embedding:
-  const nodeEmbedding = [ /* ... * / ];
-  const mortonHex = computeMortonKeyFromEmbedding(nodeEmbedding, quantParams);
-
-  const node = {
-    id: 'node-uuid-1',
-    title: 'Causes of urban heat islands',
-    text: '...',
-    embedding: nodeEmbedding,
-    hilbertKeyHex: mortonHex,
-    meta: { createdAt: new Date().toISOString(), createdBy: 'local' }
-  };
-
-  await saveNode(node);
-
-  // Range search: radius = 0x100 (as BigInt)
-  const neighborsNodeIds = await rangeScanByMortonHex(mortonHex, 0x100);
-  console.log('neighbor ids', neighborsNodeIds);
-
-  // Get node details:
-  const got = await getNode('node-uuid-1');
-  console.log(got);
-})();
-*/
-
-/////////////////////////
 // Export for modules  //
 /////////////////////////
 // ES6 exports
@@ -334,10 +483,16 @@ export {
   saveNode,
   getNode,
   deleteNode,
+  getAllNodes,
   rangeScanByMortonHex,
   computeQuantizationParams,
   computeMortonKeyFromEmbedding,
   reduceEmbedding,
+  // Phase 6: Links functions
+  saveLink,
+  getLink,
+  queryLinks,
+  deleteLink,
 };
 
 // CommonJS fallback for Node environments
@@ -347,10 +502,15 @@ if (typeof module !== 'undefined' && module.exports) {
     saveNode,
     getNode,
     deleteNode,
+    getAllNodes,
     rangeScanByMortonHex,
     computeQuantizationParams,
     computeMortonKeyFromEmbedding,
     reduceEmbedding,
+    saveLink,
+    getLink,
+    queryLinks,
+    deleteLink,
   };
 }
 
@@ -361,9 +521,14 @@ if (typeof window !== 'undefined') {
     saveNode,
     getNode,
     deleteNode,
+    getAllNodes,
     rangeScanByMortonHex,
     computeQuantizationParams,
     computeMortonKeyFromEmbedding,
     reduceEmbedding,
+    saveLink,
+    getLink,
+    queryLinks,
+    deleteLink,
   };
 }

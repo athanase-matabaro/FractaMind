@@ -2,6 +2,34 @@ import '@testing-library/jest-dom';
 import { TextEncoder, TextDecoder } from 'util';
 import 'fake-indexeddb/auto';
 
+// Mock import.meta for Vite environment variables
+global.importMeta = {
+  env: {
+    VITE_AI_MODE: 'mock',
+    VITE_AI_DEBUG: 'false',
+    VITE_AI_DEBUG_TRACE: 'false',
+    VITE_FEATURE_WORKSPACE: 'true',
+    VITE_FEATURE_SEARCH: 'true',
+    VITE_FEATURE_CONTEXTUAL_LINKS: 'true',
+    VITE_EMBED_DIM: '512',
+    VITE_MORTON_BITS: '64',
+    VITE_EMBED_CHUNK_SIZE: '512',
+    VITE_SEARCH_TOP_K: '10',
+    VITE_SEARCH_PREFILTER_MULTIPLIER: '3',
+    VITE_CONTEXT_SUGGEST_TOPK: '8',
+    VITE_LINK_SIM_THRESHOLD: '0.78',
+    VITE_CONTEXT_HALF_LIFE_HOURS: '72',
+    VITE_LINK_MAX_BATCH: '2000',
+    MODE: 'test',
+    DEV: false,
+    PROD: false,
+    SSR: false,
+  },
+  url: 'file:///test',
+  hot: undefined,
+  glob: () => ({}),
+};
+
 // Polyfill TextEncoder/TextDecoder for Node.js test environment
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
