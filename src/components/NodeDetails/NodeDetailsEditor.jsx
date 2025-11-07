@@ -10,7 +10,7 @@
  * - Accept/Reject rewrite suggestions
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { rewriteNode, acceptRewrite, rejectRewrite, getRewriteHistory, getRewriteStats } from '../../core/rewriter.js';
 import { recordInteraction } from '../../core/memory.js';
 import ContextSuggestions from './ContextSuggestions.jsx';
@@ -34,12 +34,7 @@ const NodeDetailsEditor = ({ node, quantParams, onNodeUpdate, onClose }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [stats, setStats] = useState(null);
 
-  // Load history and stats on mount
-  useEffect(() => {
-    loadHistoryAndStats();
-  }, [node.id]);
-
-  const loadHistoryAndStats = async () => {
+  const loadHistoryAndStats = useCallback(async () => {
     try {
       const [historyData, statsData] = await Promise.all([
         getRewriteHistory(node.id),
@@ -50,7 +45,12 @@ const NodeDetailsEditor = ({ node, quantParams, onNodeUpdate, onClose }) => {
     } catch (err) {
       console.error('Failed to load history/stats:', err);
     }
-  };
+  }, [node.id]);
+
+  // Load history and stats on mount
+  useEffect(() => {
+    loadHistoryAndStats();
+  }, [loadHistoryAndStats]);
 
   // Handle manual edit save
   const handleSaveEdit = async () => {
@@ -334,6 +334,18 @@ const NodeDetailsEditor = ({ node, quantParams, onNodeUpdate, onClose }) => {
                     }
                     rows={3}
                     placeholder="e.g., Focus on technical accuracy, or Add more examples..."
+                    spellCheck={false}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      wordWrap: 'break-word',
+                      userSelect: 'text',
+                      pointerEvents: 'auto',
+                    }}
+                    tabIndex={0}
+                    aria-label="Custom instruction for rewriting"
                   />
                 </div>
 

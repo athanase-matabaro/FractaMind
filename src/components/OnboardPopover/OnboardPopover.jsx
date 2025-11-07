@@ -33,10 +33,6 @@ const OnboardPopover = ({
   demoMode = true,
   onImport,
 }) => {
-  // VERIFICATION: Log when component loads with new code
-  console.log('%c🔴 ONBOARD POPOVER LOADED - TIMEOUT FIX VERSION 2.0', 'background: red; color: white; padding: 4px; font-weight: bold');
-  console.log('Features: Promise.race (28s) + Watchdog (30s) + DOM fallback + Visual timer');
-
   const [text, setText] = useState('');
   const [selectedTone, setSelectedTone] = useState('concise');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +52,44 @@ const OnboardPopover = ({
   const isProcessingRef = useRef(false); // Track if we're still processing
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const elapsedTimerRef = useRef(null);
+
+  /**
+   * Component mount/unmount tracking - runs ONCE on mount, cleanup on unmount
+   */
+  useEffect(() => {
+    const mountTime = Date.now();
+    console.log('%c✅ ONBOARD POPOVER MOUNTED', 'background: green; color: white; padding: 4px; font-weight: bold', {
+      mountTime: new Date(mountTime).toISOString(),
+      demoMode,
+      hasImportFn: !!onImport,
+    });
+    console.log('Features: Promise.race (28s) + Watchdog (30s) + DOM fallback + Visual timer');
+
+    return () => {
+      const unmountTime = Date.now();
+      const lifetime = unmountTime - mountTime;
+      console.log('%c❌ ONBOARD POPOVER UNMOUNTED', 'background: orange; color: white; padding: 4px; font-weight: bold', {
+        lifetime: `${lifetime}ms`,
+        unmountTime: new Date(unmountTime).toISOString(),
+      });
+    };
+  }, [demoMode, onImport]);
+
+  /**
+   * Track re-renders during processing (DEBUG)
+   */
+  useEffect(() => {
+    if (isSubmitting) {
+      console.log('[OnboardPopover] Re-render during processing:', {
+        isSubmitting,
+        progress: progress.step,
+        showSeed,
+        secondsElapsed,
+        aiTimedOut,
+        hasError: !!error,
+      });
+    }
+  }, [isSubmitting, progress.step, showSeed, secondsElapsed, aiTimedOut, error]);
 
   /**
    * Focus textarea when popover opens
@@ -281,14 +315,26 @@ const OnboardPopover = ({
           throw new Error('Import function not provided');
         }
 
+        if (typeof onImport !== 'function') {
+          throw new Error(`onImport is not a function, got: ${typeof onImport}`);
+        }
+
         // CRITICAL: Wrap import with Promise.race for hard timeout enforcement
         // This ensures we NEVER wait indefinitely for a hung import operation
         const importPromise = onImport(text, {
           tone: selectedTone,
           onProgress: (progressData) => {
-            setProgress(progressData);
-            if (progressData.step === 'summarizing' || progressData.step === 'embedding') {
-              setShowSeed(true);
+            try {
+              if (progressData && typeof progressData === 'object') {
+                setProgress(progressData);
+                if (progressData.step === 'summarizing' || progressData.step === 'embedding') {
+                  setShowSeed(true);
+                }
+              } else {
+                console.warn('[OnboardPopover] Invalid progress data:', progressData);
+              }
+            } catch (progressError) {
+              console.error('[OnboardPopover] Error in onProgress callback:', progressError);
             }
           },
         });

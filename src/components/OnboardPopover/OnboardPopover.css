@@ -13,7 +13,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-lg);
+  padding: 1.5rem;
   animation: backdrop-fade-in var(--motion-normal) var(--motion-ease-out);
   transition: backdrop-filter var(--duration-base) var(--easing-smooth);
 }
@@ -38,8 +38,8 @@
   position: relative;
   background: var(--color-white);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  max-width: 800px;
+  padding: 2rem 2.5rem;
+  max-width: 720px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -62,11 +62,11 @@
 /* Close button */
 .onboard-close {
   position: absolute;
-  top: var(--spacing-lg);
-  right: var(--spacing-lg);
+  top: 1.5rem;
+  right: 1.5rem;
   background: transparent;
   border: none;
-  padding: var(--spacing-sm);
+  padding: 0.5rem;
   cursor: pointer;
   color: var(--color-gray-500);
   border-radius: var(--radius-sm);
@@ -91,46 +91,47 @@
 
 /* Title */
 .onboard-title {
-  font-size: var(--font-size-h2);
+  font-size: 1.5rem;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
-  margin: 0 0 var(--spacing-lg) 0;
-  padding-right: var(--spacing-xl); /* Space for close button */
+  margin: 0 0 1.5rem 0;
+  padding-right: 2.5rem; /* Space for close button */
+  line-height: 1.3;
 }
 
 /* Form */
 .onboard-form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: 1.25rem;
 }
 
 /* Input wrapper for floating label */
 .onboard-input-wrapper {
   position: relative;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 0;
 }
 
 /* Floating label */
 .onboard-label {
   position: absolute;
-  left: var(--spacing-md);
-  top: var(--spacing-md);
-  font-size: var(--font-size-body);
+  left: 1rem;
+  top: 1rem;
+  font-size: 0.9375rem;
   font-weight: var(--font-weight-medium);
   color: var(--color-gray-500);
   pointer-events: none;
   transition: all var(--duration-base) var(--easing-smooth);
   background: var(--color-white);
-  padding: 0 var(--spacing-xs);
+  padding: 0 0.375rem;
   z-index: 1;
 }
 
 /* Floating label - active state */
 .onboard-label-floating {
-  top: -10px;
-  left: 12px;
-  font-size: var(--font-size-small);
+  top: -0.625rem;
+  left: 0.75rem;
+  font-size: 0.75rem;
   color: var(--color-accent);
   font-weight: var(--font-weight-semibold);
 }
@@ -138,15 +139,15 @@
 /* Textarea */
 .onboard-textarea {
   width: 100%;
-  padding: var(--spacing-md);
-  padding-top: calc(var(--spacing-md) + 4px);
-  font-size: var(--font-size-body);
+  padding: 1rem;
+  padding-top: 1.125rem;
+  font-size: 0.9375rem;
   font-family: var(--font-sans);
-  line-height: var(--line-height-relaxed);
+  line-height: 1.6;
   border: 2px solid var(--color-gray-200);
   border-radius: var(--radius-md);
   resize: vertical;
-  min-height: 200px;
+  min-height: 180px;
   transition: all var(--duration-base) var(--easing-smooth);
 }
 
@@ -169,17 +170,17 @@
 /* Helper chips */
 .onboard-helper-chips {
   display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
+  gap: 0.5rem;
+  margin-top: 0.625rem;
   flex-wrap: wrap;
 }
 
 .onboard-chip {
   display: inline-block;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: 0.375rem 0.75rem;
   background: var(--color-gray-100);
   color: var(--color-text-secondary);
-  font-size: var(--font-size-small);
+  font-size: 0.8125rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-gray-200);
   cursor: default;
@@ -188,28 +189,28 @@
 
 /* Helper hint */
 .onboard-hint {
-  font-size: var(--font-size-small);
+  font-size: 0.8125rem;
   color: var(--color-text-muted);
   margin: 0;
-  line-height: var(--line-height-normal);
+  line-height: 1.5;
 }
 
 /* Keyboard hint */
 .onboard-keyboard-hint {
-  font-size: var(--font-size-small);
+  font-size: 0.8125rem;
   color: var(--color-text-muted);
   margin: 0;
-  line-height: var(--line-height-normal);
+  line-height: 1.5;
 }
 
 .onboard-keyboard-hint kbd {
   display: inline-block;
-  padding: 2px 6px;
+  padding: 0.125rem 0.5rem;
   background: var(--color-gray-100);
   border: 1px solid var(--color-gray-300);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: var(--font-size-tiny);
+  font-size: 0.75rem;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
@@ -217,14 +218,14 @@
 
 /* Privacy hint */
 .onboard-privacy-hint {
-  font-size: var(--font-size-small);
+  font-size: 0.8125rem;
   color: var(--color-text-muted);
   margin: 0;
-  padding: var(--spacing-sm);
+  padding: 0.75rem 1rem;
   background: var(--color-gray-50);
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--color-accent);
-  line-height: var(--line-height-normal);
+  line-height: 1.5;
 }
 
 /* Progress indicator */
@@ -232,8 +233,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-lg);
+  gap: 1rem;
+  padding: 1.5rem;
   background: var(--color-gray-50);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-gray-200);
@@ -246,7 +247,7 @@
 }
 
 .onboard-progress-message {
-  font-size: var(--font-size-body-small);
+  font-size: 0.875rem;
   font-weight: var(--font-weight-medium);
   color: var(--color-accent);
   text-align: center;
@@ -255,13 +256,13 @@
 
 /* Error message */
 .onboard-error {
-  padding: var(--spacing-md);
+  padding: 1rem;
   background: var(--color-error-muted);
   color: var(--color-error);
   border: 1px solid var(--color-error);
   border-radius: var(--radius-md);
-  font-size: var(--font-size-body-small);
-  line-height: var(--line-height-normal);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .onboard-error strong {
@@ -270,31 +271,32 @@
 
 .onboard-error-actions {
   display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
+  gap: 0.625rem;
+  margin-top: 1rem;
 }
 
 .onboard-error-actions .onboard-button {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-body-small);
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
 }
 
 /* Actions */
 .onboard-actions {
   display: flex;
-  gap: var(--spacing-md);
+  gap: 0.75rem;
   justify-content: flex-end;
-  margin-top: var(--spacing-md);
+  margin-top: 0.5rem;
 }
 
 .onboard-button {
-  padding: var(--spacing-md) var(--spacing-xl);
-  font-size: var(--font-size-body);
+  padding: 0.875rem 1.75rem;
+  font-size: 0.9375rem;
   font-weight: var(--font-weight-semibold);
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--motion-fast) var(--motion-ease-out);
+  min-width: 120px;
 }
 
 .onboard-button:disabled {
@@ -340,40 +342,51 @@
 
 @media (max-width: 767px) {
   .onboard-popover-backdrop {
-    padding: var(--spacing-md);
+    padding: 1rem;
   }
 
   .onboard-popover {
-    padding: var(--spacing-lg);
+    padding: 1.5rem;
     max-height: 95vh;
   }
 
   .onboard-title {
-    font-size: var(--font-size-h3);
-    padding-right: var(--spacing-lg);
+    font-size: 1.25rem;
+    padding-right: 2rem;
+    margin-bottom: 1.25rem;
   }
 
   .onboard-textarea {
-    min-height: 150px;
+    min-height: 160px;
   }
 }
 
 @media (max-width: 639px) {
   .onboard-popover {
-    padding: var(--spacing-md);
+    padding: 1.25rem;
   }
 
   .onboard-close {
-    top: var(--spacing-md);
-    right: var(--spacing-md);
+    top: 1rem;
+    right: 1rem;
+  }
+
+  .onboard-title {
+    font-size: 1.125rem;
+  }
+
+  .onboard-form {
+    gap: 1rem;
   }
 
   .onboard-actions {
     flex-direction: column;
+    gap: 0.625rem;
   }
 
   .onboard-button {
     width: 100%;
+    min-width: auto;
   }
 }
 

@@ -1,0 +1,103 @@
+═══════════════════════════════════════════════════════════════════════════════
+  COPY & PASTE THESE COMMANDS TO CREATE PULL REQUEST
+═══════════════════════════════════════════════════════════════════════════════
+
+OPTION 1: Quick Script (Recommended)
+────────────────────────────────────────────────────────────────────────────────
+cd "/home/athanase-matabaro/Dev/CA/ai project/FractaMind"
+./QUICK_PR.sh
+
+
+OPTION 2: Manual Commands (If script fails)
+────────────────────────────────────────────────────────────────────────────────
+
+Step 1: Push Branch
+────────────────────────────────────────────────────────────────────────────────
+cd "/home/athanase-matabaro/Dev/CA/ai project/FractaMind"
+git push -u origin hotfix/ai-processing-hang-cm
+
+
+Step 2: Create PR
+────────────────────────────────────────────────────────────────────────────────
+gh pr create --title "fix(ai): Complete Phase 3 Chrome Built-in AI integration fixes" --base main
+
+
+Step 3: View PR
+────────────────────────────────────────────────────────────────────────────────
+gh pr view --web
+
+
+OPTION 3: GitHub Web UI (If gh command not available)
+────────────────────────────────────────────────────────────────────────────────
+
+1. Run: git push -u origin hotfix/ai-processing-hang-cm
+
+2. Open in browser:
+   https://github.com/YOUR_USERNAME/FractaMind/compare/main...hotfix/ai-processing-hang-cm
+
+3. Click "Create pull request"
+
+4. Use title:
+   fix(ai): Complete Phase 3 Chrome Built-in AI integration fixes
+
+5. Copy PR body from: PR_COMMANDS.md
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  WHAT WAS COMMITTED
+═══════════════════════════════════════════════════════════════════════════════
+
+Commit: da95995
+Branch: hotfix/ai-processing-hang-cm
+
+59 files changed:
+  - 7 source files (AI integration fixes)
+  - 24 documentation files (moved to docs/)
+  - 19 test files (reorganized to tests/unit/)
+  - 3 configuration files
+  - 2 report files
+
+Total: +9,330 lines, -271 lines
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  SUMMARY FOR REVIEWER
+═══════════════════════════════════════════════════════════════════════════════
+
+What: 6-phase fix cascade for Chrome Built-in AI integration
+Why:  Hardcoded timeouts and blocking operations preventing AI from working
+How:  Dynamic timeout configuration + non-blocking federation + availability checks
+
+Before: ❌ Timed out at 28-120 seconds, no visibility, blocking operations
+After:  ✅ Works in 5-15 seconds, full logging, graceful degradation
+
+Files:
+  - src/ai/chromeAI.js (v3.1)
+  - src/components/chore-component/ChoreComponent.jsx
+  - src/core/importer.js (v3.5)
+  - .env.example
+
+Validation:
+  ✅ Build passing (3.26s)
+  ✅ Live AI verified (Chrome Dev)
+  ✅ Documentation complete
+
+Risk: LOW - All changes backwards compatible
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  DOCUMENTATION
+═══════════════════════════════════════════════════════════════════════════════
+
+Complete Phase 3 timeline in:
+  - docs/PHASE3_COMPLETE_WORKSPACE_REGISTRATION_FIX.md
+  - docs/PHASE3_FINAL_TIMEOUT_FIX.md
+  - docs/PHASE3_CRITICAL_DOWNLOAD_MONITOR_FIX.md
+  - docs/PHASE3_MODEL_AVAILABILITY_FIX.md
+  - docs/CRITICAL_FIXES_APPLIED.md
+  - docs/REPO_REORG_COMPLETE.md
+
+Full PR description: PR_COMMANDS.md
+
+
+═══════════════════════════════════════════════════════════════════════════════
