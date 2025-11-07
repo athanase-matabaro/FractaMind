@@ -32,16 +32,6 @@ export const FEATURE_FLAGS = {
    * Export functionality (JSON/Markdown)
    */
   FEATURE_EXPORT: true,
-
-  /**
-   * Contextual links and semantic suggestions (Phase 6)
-   * - Enables automatic link suggestions between nodes
-   * - Enables manual link creation with relation types
-   * - Enables link confidence scoring and provenance tracking
-   *
-   * Set to false to disable contextualization feature
-   */
-  FEATURE_CONTEXTUAL_LINKS: import.meta.env.VITE_FEATURE_CONTEXTUAL_LINKS !== 'false',
 };
 
 /**
@@ -145,56 +135,6 @@ export const AI = {
 };
 
 /**
- * Contextualization and Linking Configuration (Phase 6)
- */
-export const CONTEXTUALIZATION = {
-  /**
-   * Number of top suggestions to return
-   */
-  SUGGEST_TOP_K: parseInt(import.meta.env.VITE_CONTEXT_SUGGEST_TOPK) || 8,
-
-  /**
-   * Cosine similarity threshold for auto link candidates
-   */
-  LINK_SIM_THRESHOLD: parseFloat(import.meta.env.VITE_LINK_SIM_THRESHOLD) || 0.78,
-
-  /**
-   * Context decay half-life in hours for recency bias
-   */
-  CONTEXT_HALF_LIFE_HOURS: parseFloat(import.meta.env.VITE_CONTEXT_HALF_LIFE_HOURS) || 72,
-
-  /**
-   * Maximum batch size for background link processing
-   */
-  LINK_MAX_BATCH: parseInt(import.meta.env.VITE_LINK_MAX_BATCH) || 2000,
-
-  /**
-   * Confidence score weights for link calculation
-   */
-  CONFIDENCE_WEIGHTS: {
-    semantic: 0.5,    // w_sim: cosine similarity weight
-    ai: 0.3,          // w_ai: AI relation confidence weight
-    lexical: 0.1,     // w_lex: n-gram overlap weight
-    contextual: 0.1,  // w_bias: contextual recency/action bias weight
-  },
-
-  /**
-   * Relation types taxonomy
-   */
-  RELATION_TYPES: [
-    { id: 'clarifies', label: 'Clarifies', icon: '💡', description: 'Explains or elaborates on the target' },
-    { id: 'contradicts', label: 'Contradicts', icon: '⚡', description: 'Presents opposing view or information' },
-    { id: 'elaborates', label: 'Elaborates', icon: '📝', description: 'Provides additional detail' },
-    { id: 'example-of', label: 'Example Of', icon: '🔍', description: 'Concrete instance or case' },
-    { id: 'causes', label: 'Causes', icon: '➡️', description: 'Causal relationship' },
-    { id: 'depends-on', label: 'Depends On', icon: '🔗', description: 'Logical or temporal dependency' },
-    { id: 'similar-to', label: 'Similar To', icon: '🔄', description: 'Thematically or structurally similar' },
-    { id: 'references', label: 'References', icon: '📌', description: 'Cites or mentions' },
-    { id: 'related', label: 'Related', icon: '🌐', description: 'General connection' },
-  ],
-};
-
-/**
  * Check if a feature is enabled
  * @param {string} featureName - Name of the feature flag
  * @returns {boolean} True if feature is enabled
@@ -215,7 +155,6 @@ export function getConfig(category, key) {
     SEARCH,
     WORKSPACE,
     AI,
-    CONTEXTUALIZATION,
   }[category];
 
   if (!categoryConfig) {
@@ -235,7 +174,6 @@ export default {
   SEARCH,
   WORKSPACE,
   AI,
-  CONTEXTUALIZATION,
   isFeatureEnabled,
   getConfig,
 };
