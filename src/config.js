@@ -60,6 +60,17 @@ export const FEATURE_FLAGS = {
    * Set to false to disable contextualization feature
    */
   FEATURE_CONTEXTUAL_LINKS: getEnv('VITE_FEATURE_CONTEXTUAL_LINKS') !== 'false',
+
+  /**
+   * Cross-project reasoning and collaborative intelligence (Phase 7)
+   * - Enables cross-project relation inference
+   * - Enables online topic modeling
+   * - Enables CRDT-based collaborative editing
+   * - Enables multi-format exports with provenance
+   *
+   * Set to false to disable Phase 7 features
+   */
+  FEATURE_PHASE7: getEnv('VITE_PHASE7_ENABLED') !== 'false',
 };
 
 /**
@@ -213,6 +224,73 @@ export const CONTEXTUALIZATION = {
 };
 
 /**
+ * Cross-Project Reasoning and Federated Intelligence Configuration (Phase 7)
+ */
+export const PHASE7 = {
+  /**
+   * Maximum reasoning depth for cross-project inference chains
+   */
+  REASONER_MAX_DEPTH: parseInt(getEnv('VITE_REASONER_MAX_DEPTH')) || 3,
+
+  /**
+   * Reasoning confidence blending weights [w_sim, w_ai, w_lex, w_bias]
+   */
+  REASONER_CONF_BLEND: (() => {
+    const blend = getEnv('VITE_REASONER_CONF_BLEND');
+    if (blend) {
+      const parts = blend.split(',').map(parseFloat);
+      return {
+        semantic: parts[0] || 0.5,
+        ai: parts[1] || 0.3,
+        lexical: parts[2] || 0.1,
+        contextual: parts[3] || 0.1,
+      };
+    }
+    return {
+      semantic: 0.5,
+      ai: 0.3,
+      lexical: 0.1,
+      contextual: 0.1,
+    };
+  })(),
+
+  /**
+   * Topic modeling time window in minutes
+   */
+  TOPIC_WINDOW_MINUTES: parseInt(getEnv('VITE_TOPIC_WINDOW_MINUTES')) || 60,
+
+  /**
+   * Number of topics for clustering
+   */
+  TOPIC_NUM_TOPICS: parseInt(getEnv('VITE_TOPIC_NUM_TOPICS')) || 40,
+
+  /**
+   * CRDT implementation: 'automerge' or 'yjs'
+   */
+  COLLAB_CRDT: getEnv('VITE_COLLAB_CRDT') || 'automerge',
+
+  /**
+   * Reasoner timeout in milliseconds (target for prefilter + scoring)
+   */
+  REASONER_TIMEOUT_MS: parseInt(getEnv('VITE_REASONER_TIMEOUT_MS')) || 250,
+
+  /**
+   * Maximum batch size for cross-project reasoning
+   */
+  REASONER_MAX_BATCH: parseInt(getEnv('VITE_REASONER_MAX_BATCH')) || 2000,
+
+  /**
+   * Performance targets for validation
+   */
+  PERFORMANCE_TARGETS: {
+    PREFILTER_SCORING_MEAN_MS: 250,
+    PREFILTER_SCORING_P95_MS: 400,
+    TOPIC_UPDATE_MEAN_MS: 500,
+    CHAIN_SEARCH_P95_MS: 700,
+  },
+};
+
+/**
  * Check if a feature is enabled
  * @param {string} featureName - Name of the feature flag
  * @returns {boolean} True if feature is enabled
@@ -234,6 +312,7 @@ export function getConfig(category, key) {
     WORKSPACE,
     AI,
     CONTEXTUALIZATION,
+    PHASE7,
   }[category];
 
   if (!categoryConfig) {
@@ -254,6 +333,7 @@ export default {
   WORKSPACE,
   AI,
   CONTEXTUALIZATION,
+  PHASE7,
   isFeatureEnabled,
   getConfig,
 };
