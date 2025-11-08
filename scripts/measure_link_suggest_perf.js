@@ -32,6 +32,9 @@
  *   node scripts/measure_link_suggest_perf.js --project my-proj --samples 50 --output perf-results.json
  */
 
+// Setup IndexedDB polyfill for Node.js environment
+import 'fake-indexeddb/auto';
+
 import { initDB, getAllNodes } from '../src/db/fractamind-indexer.js';
 import { suggestLinks } from '../src/core/contextualizer.js';
 import { queryLinksFiltered } from '../src/core/linker.js';
