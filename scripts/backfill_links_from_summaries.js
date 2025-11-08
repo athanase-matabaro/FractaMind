@@ -29,6 +29,9 @@
  *   node scripts/backfill_links_from_summaries.js --project my-proj --limit 100
  */
 
+// Setup IndexedDB polyfill for Node.js environment
+import 'fake-indexeddb/auto';
+
 import { initDB, getAllNodes } from '../src/db/fractamind-indexer.js';
 import { suggestLinks } from '../src/core/contextualizer.js';
 import { createLink } from '../src/core/linker.js';

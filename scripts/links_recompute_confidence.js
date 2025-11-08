@@ -32,6 +32,9 @@
  *   node scripts/links_recompute_confidence.js --project my-proj --limit 500
  */
 
+// Setup IndexedDB polyfill for Node.js environment
+import 'fake-indexeddb/auto';
+
 import { initDB, getNode } from '../src/db/fractamind-indexer.js';
 import { queryLinksFiltered, computeLinkConfidence, computeLexicalSimilarity, batchUpdateConfidences } from '../src/core/linker.js';
 import { scorePair } from '../src/core/searcher.js';

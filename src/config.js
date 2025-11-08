@@ -5,6 +5,24 @@
  */
 
 /**
+ * Helper to get environment variable from either import.meta.env (Vite) or process.env (Node.js)
+ * @param {string} key - Environment variable key (with VITE_ prefix)
+ * @returns {string|undefined} Environment variable value
+ */
+function getEnv(key) {
+  // In Node.js environment (scripts)
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  // In Vite/browser environment
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env[key];
+  }
+  // Fallback to undefined
+  return undefined;
+}
+
+/**
  * Feature flags for conditional feature enablement
  */
 export const FEATURE_FLAGS = {
@@ -16,7 +34,7 @@ export const FEATURE_FLAGS = {
    *
    * Set to false to disable workspace feature in emergency
    */
-  FEATURE_WORKSPACE: import.meta.env.VITE_FEATURE_WORKSPACE !== 'false',
+  FEATURE_WORKSPACE: getEnv('VITE_FEATURE_WORKSPACE') !== 'false',
 
   /**
    * Timeline view (Phase 4)
@@ -41,7 +59,7 @@ export const FEATURE_FLAGS = {
    *
    * Set to false to disable contextualization feature
    */
-  FEATURE_CONTEXTUAL_LINKS: import.meta.env.VITE_FEATURE_CONTEXTUAL_LINKS !== 'false',
+  FEATURE_CONTEXTUAL_LINKS: getEnv('VITE_FEATURE_CONTEXTUAL_LINKS') !== 'false',
 };
 
 /**
@@ -151,22 +169,22 @@ export const CONTEXTUALIZATION = {
   /**
    * Number of top suggestions to return
    */
-  SUGGEST_TOP_K: parseInt(import.meta.env.VITE_CONTEXT_SUGGEST_TOPK) || 8,
+  SUGGEST_TOP_K: parseInt(getEnv('VITE_CONTEXT_SUGGEST_TOPK')) || 8,
 
   /**
    * Cosine similarity threshold for auto link candidates
    */
-  LINK_SIM_THRESHOLD: parseFloat(import.meta.env.VITE_LINK_SIM_THRESHOLD) || 0.78,
+  LINK_SIM_THRESHOLD: parseFloat(getEnv('VITE_LINK_SIM_THRESHOLD')) || 0.78,
 
   /**
    * Context decay half-life in hours for recency bias
    */
-  CONTEXT_HALF_LIFE_HOURS: parseFloat(import.meta.env.VITE_CONTEXT_HALF_LIFE_HOURS) || 72,
+  CONTEXT_HALF_LIFE_HOURS: parseFloat(getEnv('VITE_CONTEXT_HALF_LIFE_HOURS')) || 72,
 
   /**
    * Maximum batch size for background link processing
    */
-  LINK_MAX_BATCH: parseInt(import.meta.env.VITE_LINK_MAX_BATCH) || 2000,
+  LINK_MAX_BATCH: parseInt(getEnv('VITE_LINK_MAX_BATCH')) || 2000,
 
   /**
    * Confidence score weights for link calculation
